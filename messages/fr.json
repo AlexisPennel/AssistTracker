@@ -1,0 +1,13 @@
+{
+  "HomePage": {
+    "hero": {
+      "title": "Des plantes sélectionnées pour embellir votre intérieur",
+      "description": "Découvrez une collection de plantes soigneusement choisies pour apporter fraîcheur, équilibre et caractère à votre espace.",
+      "cta": "Découvrir la collection"
+    }
+  },
+
+  "LoginPage": {
+    "title": "Connexion"
+  }
+}

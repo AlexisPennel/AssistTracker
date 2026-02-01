@@ -1,0 +1,13 @@
+{
+  "HomePage": {
+    "hero": {
+      "title": "Carefully selected plants to enhance your space",
+      "description": "Discover a curated collection of plants chosen to bring freshness, balance, and character to your home.",
+      "cta": "View the collection"
+    }
+  },
+
+  "LoginPage": {
+    "title": "Sign in"
+  }
+}
