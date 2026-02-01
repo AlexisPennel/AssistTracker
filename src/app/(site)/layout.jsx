@@ -4,6 +4,7 @@ import MenuBar from '@/components/layout/MenuBar/MenuBar'
 import ServiceWorkerRegister from '@/components/pwa/ServiceWorkerRegister'
 import { Providers } from '@/providers/providers'
 import '../globals.css'
+import Header from '@/components/layout/Header/Header'
 
 // Fonts optimisées (bon CLS, bonne perf)
 const geistSans = Geist({
@@ -68,7 +69,7 @@ export default async function RootLayout({ children }) {
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
           <ServiceWorkerRegister />
-          {/* <Header /> */}
+          <Header />
           <MenuBar />
           {children}
         </Providers>
