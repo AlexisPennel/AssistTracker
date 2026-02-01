@@ -217,10 +217,7 @@ const HomeDashboard = () => {
             const isPastGroup = slots.every((s) => s.isPast)
 
             return (
-              <div
-                key={time}
-                className={`flex flex-col gap-3 transition-opacity duration-300 ${isPastGroup ? 'opacity-50' : 'opacity-100'}`}
-              >
+              <div key={time} className={`flex flex-col gap-3 transition-opacity duration-300`}>
                 <div className="flex items-center gap-3">
                   <Badge
                     variant={isPastGroup ? 'outline' : 'secondary'}
@@ -242,7 +239,7 @@ const HomeDashboard = () => {
                           {slot.occurrence === 'once' && (
                             <Badge
                               variant="outline"
-                              className="h-4 border-amber-200 bg-amber-50 text-[9px] text-amber-600 uppercase"
+                              className="h-4 border-amber-200 text-[9px] text-amber-600 uppercase"
                             >
                               una vez
                             </Badge>
