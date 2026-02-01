@@ -6,50 +6,58 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 const ScheduleContext = createContext()
 
 export function ScheduleProvider({ children }) {
-  const { data: session, status } = useSession() // Monitoreamos la sesión
+  const { status } = useSession()
   const [schedules, setSchedules] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const fetchTodaySchedules = useCallback(async () => {
-    // Si la sesión aún se está cargando o no hay usuario, no disparamos el fetch
-    if (status !== 'authenticated') return
+  // 1. Nouvel état pour la date sélectionnée (par défaut : aujourd'hui)
+  const [selectedDate, setSelectedDate] = useState(new Date())
 
-    setLoading(true)
-    try {
-      const response = await fetch('/api/schedules/today')
+  const fetchSchedules = useCallback(
+    async (date) => {
+      if (status !== 'authenticated') return
 
-      if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`)
+      setLoading(true)
+      try {
+        // 2. Formatage de la date en YYYY-MM-DD pour l'API
+        const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+        // On utilise un endpoint plus générique ou on passe la date en query param
+        const response = await fetch(`/api/schedules?date=${dateStr}`)
+
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`)
+        }
+
+        const data = await response.json()
+        setSchedules(Array.isArray(data) ? data : [])
+      } catch (error) {
+        console.error('❌ Error cargando horarios:', error)
+        setSchedules([])
+      } finally {
+        setLoading(false)
       }
+    },
+    [status]
+  )
 
-      const data = await response.json()
-
-      // Verificamos si la data es realmente un array (seguridad extra)
-      setSchedules(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('❌ Error cargando horarios en el Context:', error)
-      setSchedules([]) // Limpiamos en caso de error
-    } finally {
-      setLoading(false)
-    }
-  }, [status]) // Re-creamos la función si el estatus de la sesión cambia
-
-  // Efecto principal: cargar datos cuando la sesión esté lista
+  // 3. Re-charger les données dès que la date sélectionnée change
   useEffect(() => {
     if (status === 'authenticated') {
-      fetchTodaySchedules()
+      fetchSchedules(selectedDate)
     } else if (status === 'unauthenticated') {
       setLoading(false)
       setSchedules([])
     }
-  }, [status, fetchTodaySchedules])
+  }, [status, selectedDate, fetchSchedules])
 
   return (
     <ScheduleContext.Provider
       value={{
         schedules,
         loading: loading || status === 'loading',
-        refreshSchedules: fetchTodaySchedules,
+        selectedDate, // On expose la date actuelle
+        setSelectedDate, // On expose la fonction pour changer de date
+        refreshSchedules: () => fetchSchedules(selectedDate),
       }}
     >
       {children}

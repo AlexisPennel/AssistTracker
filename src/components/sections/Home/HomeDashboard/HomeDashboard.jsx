@@ -1,6 +1,21 @@
 'use client'
 
-import { ArrowRight, Check, Loader2, Wallet, X } from 'lucide-react'
+import { addDays, format, isSameDay, subDays } from 'date-fns'
+import { es } from 'date-fns/locale'
+import {
+  ArrowRight,
+  Ban,
+  Calendar as CalendarIcon,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Download,
+  Loader2,
+  Smartphone,
+  Wallet,
+  X,
+} from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useMemo } from 'react'
 
@@ -10,19 +25,18 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Item, ItemActions, ItemContent, ItemMedia } from '@/components/ui/item'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
-import { useAttendance } from '@/context/AttendanceContext' // Nuevo Contexto
+import { useAttendance } from '@/context/AttendanceContext'
 import { useSchedules } from '@/context/ScheduleContext'
 import { usePWAInstall } from '@/hooks/usePWAInstall'
-import { Ban, Download, Smartphone } from 'lucide-react'
 import { AddStudentDialog } from './AddStudentDialog'
 
 const HomeDashboard = () => {
   const { data: session, status: authStatus } = useSession()
-  const { schedules, loading: schedulesLoading } = useSchedules()
-  const { attendances, updateStatus, loading: attendanceLoading } = useAttendance()
-
+  const { schedules, loading: schedulesLoading, selectedDate, setSelectedDate } = useSchedules()
+  const { attendances, updateStatus } = useAttendance()
   const { isInstallable, handleInstallClick } = usePWAInstall()
 
+  // Formateador de moneda
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -30,21 +44,38 @@ const HomeDashboard = () => {
     }).format(amount)
   }
 
-  // 1. Fusionamos los horarios con sus estados de asistencia reales del contexto
+  // 1. Enriquecer y ordenar datos
   const enrichedSchedules = useMemo(() => {
-    return schedules.map((slot) => ({
-      ...slot,
-      status: attendances[slot._id] || 'pending', // Prioridad al estado del AttendanceContext
-    }))
-  }, [schedules, attendances])
+    const now = new Date()
+    const currentH = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+    const isViewingToday = isSameDay(selectedDate, now)
 
-  // 2. Calculamos estadísticas basadas en los datos enriquecidos
+    return [...schedules]
+      .map((slot) => ({
+        ...slot,
+        status: attendances[slot._id] || 'pending',
+        // Si vemos hoy, comparamos con la hora real. Si es pasado, todo es "past". Si es futuro, nada es "past".
+        isPast: isViewingToday ? slot.endTime < currentH : selectedDate < now,
+      }))
+      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+  }, [schedules, attendances, selectedDate])
+
+  // 2. Agrupar por hora de inicio
+  const groupedSchedules = useMemo(() => {
+    const groups = {}
+    enrichedSchedules.forEach((slot) => {
+      if (!groups[slot.startTime]) groups[slot.startTime] = []
+      groups[slot.startTime].push(slot)
+    })
+    return groups
+  }, [enrichedSchedules])
+
+  // 3. Estadísticas
   const stats = useMemo(() => {
     const activeSchedules = enrichedSchedules.filter((s) => s.status !== 'canceled')
-
     const total = activeSchedules.length
-    const processed = activeSchedules.filter((s) => s.status && s.status !== 'pending').length
     const presentCount = activeSchedules.filter((s) => s.status === 'present').length
+    const processed = activeSchedules.filter((s) => s.status !== 'pending').length
 
     const totalRevenue = enrichedSchedules
       .filter((s) => s.status === 'present')
@@ -52,226 +83,232 @@ const HomeDashboard = () => {
 
     const percentage = total > 0 ? (processed / total) * 100 : 0
 
-    return { total, processed, presentCount, percentage, totalRevenue }
+    return { total, presentCount, percentage, totalRevenue }
   }, [enrichedSchedules])
 
-  // 3. Dividimos en Próximas y Pasadas usando enrichedSchedules
-  const { upcoming, past } = useMemo(() => {
-    const now = new Date()
-    const currentHour = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+  const firstName = session?.user?.name ? session.user.name.split(' ')[0] : 'Profe'
+  const isToday = isSameDay(selectedDate, new Date())
 
-    return enrichedSchedules.reduce(
-      (acc, slot) => {
-        const isPast = slot.startTime < currentHour
-        const target = isPast ? acc.past : acc.upcoming
-
-        if (!target[slot.startTime]) target[slot.startTime] = []
-        target[slot.startTime].push(slot)
-
-        return acc
-      },
-      { upcoming: {}, past: {} }
-    )
-  }, [enrichedSchedules])
-
-  const firstName = useMemo(() => {
-    if (!session?.user?.name) return 'Profe'
-    return session.user.name.split(' ')[0]
-  }, [session?.user?.name])
-
-  // Lógica delegada al Contexto (con Toggle inteligente)
-  const handleToggleAttendance = async (slot, newStatus) => {
-    const currentStatus = attendances[slot._id] || 'pending'
-    const finalStatus = currentStatus === newStatus ? 'pending' : newStatus
-
-    // updateStatus ya maneja la persistencia y el estado optimista
-    await updateStatus(slot._id, slot.studentId._id, finalStatus)
-  }
-
-  if (authStatus === 'loading' || schedulesLoading)
+  if (authStatus === 'loading' || schedulesLoading) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
         <Loader2 className="text-primary size-8 animate-spin" />
         <p className="text-muted-foreground animate-pulse text-sm">Cargando tus clases...</p>
       </div>
     )
-
-  const RenderTimeGroups = ({ groups, title, emptyMessage }) => (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
-          {title}
-        </h2>
-      </div>
-
-      {Object.keys(groups).length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed py-8 text-center opacity-50">
-          <p className="text-muted-foreground text-xs italic">{emptyMessage}</p>
-        </div>
-      ) : (
-        Object.entries(groups)
-          .sort()
-          .map(([time, slots]) => (
-            <div key={time} className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <Badge
-                  variant="secondary"
-                  className="flex items-center gap-2 border px-3 py-1 text-xs font-bold shadow-sm"
-                >
-                  {time} <ArrowRight className="text-muted-foreground size-2" /> {slots[0].endTime}
-                </Badge>
-                <Separator className="flex-1 opacity-40" />
-              </div>
-              <div className="flex flex-col gap-2">
-                {slots.map((slot) => (
-                  <Item
-                    key={slot._id}
-                    variant="outline"
-                    className={`rounded-xl bg-transparent transition-all duration-300`}
-                  >
-                    <ItemContent>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold">
-                          {slot.studentId?.name || 'Alumno sin nombre'}
-                        </p>
-                        {slot.occurrence === 'once' && (
-                          <Badge
-                            variant="outline"
-                            className="h-4 border-amber-200 bg-amber-50 px-1.5 text-[9px] font-bold tracking-wider text-amber-600 uppercase shadow-none"
-                          >
-                            una vez
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-muted-foreground text-xs font-medium tracking-tight">
-                        {formatCurrency(slot.studentId?.price || 0)}
-                      </p>
-                    </ItemContent>
-                    <ItemActions className="gap-2">
-                      <Button
-                        variant={slot.status === 'canceled' ? 'canceled' : 'outline'}
-                        size="icon"
-                        className="size-8 rounded-full shadow-sm"
-                        onClick={() => handleToggleAttendance(slot, 'canceled')}
-                      >
-                        <Ban />
-                      </Button>
-
-                      <Button
-                        variant={slot.status === 'absent' ? 'destructive' : 'outline'}
-                        size="icon"
-                        className="size-8 rounded-full shadow-sm"
-                        onClick={() => handleToggleAttendance(slot, 'absent')}
-                      >
-                        <X className="size-4" />
-                      </Button>
-
-                      <Button
-                        variant={slot.status === 'present' ? 'default' : 'outline'}
-                        size="icon"
-                        className="size-8 rounded-full shadow-sm transition-colors"
-                        style={{
-                          backgroundColor: slot.status === 'present' ? '#7e9e75' : 'transparent',
-                          borderColor: slot.status === 'present' ? '#7e9e75' : undefined,
-                          color: slot.status === 'present' ? 'white' : undefined,
-                        }}
-                        onClick={() => handleToggleAttendance(slot, 'present')}
-                      >
-                        <Check className="size-4" />
-                      </Button>
-                    </ItemActions>
-                  </Item>
-                ))}
-              </div>
-            </div>
-          ))
-      )}
-    </div>
-  )
+  }
 
   return (
     <section className="animate-in fade-in mb-[10vh] flex w-full max-w-2xl flex-col gap-8 px-4 duration-500 xl:mx-auto xl:px-0">
+      {/* Banner PWA */}
       {isInstallable && (
-        <Item variant="outline" className={'border-dashed'}>
+        <Item variant="outline" className="border-dashed">
           <ItemMedia
             variant="image"
-            className={'bg-muted flex items-center justify-center rounded-full p-1'}
+            className="bg-muted flex items-center justify-center rounded-full p-1"
           >
             <Smartphone className="size-5" />
           </ItemMedia>
           <ItemContent>
-            <div className="flex flex-col">
-              <p className="text-base font-bold">Instalar la app</p>
-            </div>
+            <p className="text-base font-bold">Instalar la app</p>
           </ItemContent>
           <ItemActions>
-            <Button size="icon" onClick={handleInstallClick} className="gap-2 shadow-sm">
+            <Button size="icon" onClick={handleInstallClick}>
               <Download className="size-4" />
             </Button>
           </ItemActions>
         </Item>
       )}
+
+      {/* Header */}
       <header className="flex items-center justify-between py-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-tight">Hola, {firstName} 👋</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {isToday ? `Hola, ${firstName} 👋` : 'Historial'}
+          </h1>
           <p className="text-muted-foreground text-sm capitalize">
-            {new Date().toLocaleDateString('es-ES', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-            })}
+            {format(selectedDate, "eeee, d 'de' MMMM", { locale: es })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <AddStudentDialog />
-        </div>
+        <AddStudentDialog />
       </header>
 
+      {/* Selector de fecha (Switcher) */}
+      <div className="flex items-center justify-between rounded-full border bg-transparent p-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setSelectedDate(subDays(selectedDate, 1))}
+          className="h-8 w-8 rounded-full"
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-2">
+            <CalendarIcon className="text-primary size-3 opacity-70" />
+            <span className="text-sm font-bold">
+              {isToday ? 'Hoy' : format(selectedDate, 'dd MMM yyyy', { locale: es })}
+            </span>
+          </div>
+          {!isToday && (
+            <button
+              onClick={() => setSelectedDate(new Date())}
+              className="text-primary text-[10px] font-bold hover:underline"
+            >
+              Volver a hoy
+            </button>
+          )}
+        </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+          className="h-8 w-8 rounded-full"
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+
+      {/* Stats Card */}
       <Card className="bg-muted/20 overflow-hidden shadow-none">
         <CardContent className="space-y-4 px-6 py-0">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <p className="text-muted-foreground text-[10px] font-bold tracking-widest uppercase">
-                Ganancias de hoy
+                {isToday ? 'Ganancias de hoy' : 'Ganancias del día'}
               </p>
               <p className="text-3xl font-medium tracking-tight">
                 {formatCurrency(stats.totalRevenue)}
               </p>
             </div>
             <div className="bg-muted rounded-full p-3">
-              <Wallet className="text-foreground size-4" />
+              <Wallet className="size-4" />
             </div>
           </div>
-
           <div className="space-y-2">
-            <div className="flex items-end justify-between font-mono">
-              <p className="text-xs font-semibold">
+            <div className="flex items-end justify-between font-mono text-[11px]">
+              <p className="font-semibold">
                 {stats.presentCount} / {stats.total}{' '}
-                <span className="text-muted-foreground font-normal">clases completadas</span>
+                <span className="text-muted-foreground">clases</span>
               </p>
-              <p className="text-primary text-[11px] font-bold">{Math.round(stats.percentage)}%</p>
+              <p className="text-primary font-bold">{Math.round(stats.percentage)}%</p>
             </div>
-            <Progress
-              value={stats.percentage}
-              className="bg-muted/50 h-2"
-              indicatorClassName="bg-[#7e9e75]"
-            />
+            <Progress value={stats.percentage} className="h-2" indicatorClassName="bg-[#7e9e75]" />
           </div>
         </CardContent>
       </Card>
 
-      <RenderTimeGroups
-        groups={upcoming}
-        title="Próximas clases"
-        emptyMessage="No tienes más clases programadas para hoy."
-      />
+      {/* Lista Única Cronológica */}
+      <div className="flex flex-col gap-6">
+        <h2 className="text-muted-foreground px-1 text-xs font-bold tracking-widest uppercase">
+          {isToday ? 'Horario de hoy' : `Clases del ${format(selectedDate, 'dd/MM')}`}
+        </h2>
 
-      <div className="bg-muted/20 rounded-2xl border px-4 py-6">
-        <RenderTimeGroups
-          groups={past}
-          title="Clases pasadas"
-          emptyMessage="Aún no han terminado clases hoy."
-        />
+        {Object.keys(groupedSchedules).length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed py-12 text-center opacity-50">
+            <p className="text-muted-foreground text-sm italic">
+              No hay clases registradas para esta fecha.
+            </p>
+          </div>
+        ) : (
+          Object.entries(groupedSchedules).map(([time, slots]) => {
+            const isPastGroup = slots.every((s) => s.isPast)
+
+            return (
+              <div
+                key={time}
+                className={`flex flex-col gap-3 transition-opacity duration-300 ${isPastGroup ? 'opacity-50' : 'opacity-100'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <Badge
+                    variant={isPastGroup ? 'outline' : 'secondary'}
+                    className="flex items-center gap-2 px-3 py-1 text-xs font-bold shadow-sm"
+                  >
+                    {time} <ArrowRight className="size-2" /> {slots[0].endTime}
+                    {isPastGroup && <Clock className="size-3" />}
+                  </Badge>
+                  <Separator className="flex-1 opacity-40" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  {slots.map((slot) => (
+                    <Item key={slot._id} variant="outline" className="rounded-xl">
+                      <ItemContent>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold">
+                            {slot.studentId?.name || 'Alumno'}
+                          </p>
+                          {slot.occurrence === 'once' && (
+                            <Badge
+                              variant="outline"
+                              className="h-4 border-amber-200 bg-amber-50 text-[9px] text-amber-600 uppercase"
+                            >
+                              una vez
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-muted-foreground text-xs">
+                          {formatCurrency(slot.studentId?.price || 0)}
+                        </p>
+                      </ItemContent>
+                      <ItemActions className="gap-2">
+                        <Button
+                          variant={slot.status === 'canceled' ? 'canceled' : 'outline'}
+                          size="icon"
+                          className="size-8 rounded-full"
+                          onClick={() =>
+                            updateStatus(
+                              slot._id,
+                              slot.studentId._id,
+                              slot.status === 'canceled' ? 'pending' : 'canceled'
+                            )
+                          }
+                        >
+                          <Ban className="size-4" />
+                        </Button>
+
+                        <Button
+                          variant={slot.status === 'absent' ? 'destructive' : 'outline'}
+                          size="icon"
+                          className="size-8 rounded-full"
+                          onClick={() =>
+                            updateStatus(
+                              slot._id,
+                              slot.studentId._id,
+                              slot.status === 'absent' ? 'pending' : 'absent'
+                            )
+                          }
+                        >
+                          <X className="size-4" />
+                        </Button>
+
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="size-8 rounded-full transition-colors"
+                          style={{
+                            backgroundColor: slot.status === 'present' ? '#7e9e75' : 'transparent',
+                            color: slot.status === 'present' ? 'white' : 'inherit',
+                          }}
+                          onClick={() =>
+                            updateStatus(
+                              slot._id,
+                              slot.studentId._id,
+                              slot.status === 'present' ? 'pending' : 'present'
+                            )
+                          }
+                        >
+                          <Check className="size-4" />
+                        </Button>
+                      </ItemActions>
+                    </Item>
+                  ))}
+                </div>
+              </div>
+            )
+          })
+        )}
       </div>
     </section>
   )
