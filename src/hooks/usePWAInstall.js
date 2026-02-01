@@ -1,5 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-// hooks/usePWAInstall.js
 import { useEffect, useState } from 'react'
 
 export const usePWAInstall = () => {
@@ -7,18 +5,22 @@ export const usePWAInstall = () => {
   const [isInstallable, setIsInstallable] = useState(false)
 
   useEffect(() => {
+    // 1. Manejador del evento
     const handler = (e) => {
-      // Empêche la bannière par défaut du navigateur
+      console.log('✅ Evento beforeinstallprompt capturado')
       e.preventDefault()
-      // Stocke l'événement pour l'utiliser plus tard
       setDeferredPrompt(e)
       setIsInstallable(true)
     }
 
+    // 2. Escuchar el evento
     window.addEventListener('beforeinstallprompt', handler)
 
-    // Vérifie si l'app est déjà en mode "standalone" (déjà installée)
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    // 3. Verificar si ya está instalada
+    if (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true
+    ) {
       setIsInstallable(false)
     }
 
@@ -26,12 +28,12 @@ export const usePWAInstall = () => {
   }, [])
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return
+    if (!deferredPrompt) {
+      console.error('❌ No hay evento de instalación guardado')
+      return
+    }
 
-    // Affiche la fenêtre d'installation native
     deferredPrompt.prompt()
-
-    // Attend la réponse de l'utilisateur
     const { outcome } = await deferredPrompt.userChoice
 
     if (outcome === 'accepted') {

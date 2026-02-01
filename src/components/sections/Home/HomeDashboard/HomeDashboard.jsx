@@ -7,18 +7,21 @@ import { useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Item, ItemActions, ItemContent } from '@/components/ui/item'
+import { Item, ItemActions, ItemContent, ItemMedia } from '@/components/ui/item'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { useAttendance } from '@/context/AttendanceContext' // Nuevo Contexto
 import { useSchedules } from '@/context/ScheduleContext'
-import { Ban } from 'lucide-react'
+import { usePWAInstall } from '@/hooks/usePWAInstall'
+import { Ban, Download, Smartphone } from 'lucide-react'
 import { AddStudentDialog } from './AddStudentDialog'
 
 const HomeDashboard = () => {
   const { data: session, status: authStatus } = useSession()
   const { schedules, loading: schedulesLoading } = useSchedules()
   const { attendances, updateStatus, loading: attendanceLoading } = useAttendance()
+
+  const { isInstallable, handleInstallClick } = usePWAInstall()
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('es-MX', {
@@ -188,6 +191,26 @@ const HomeDashboard = () => {
 
   return (
     <section className="animate-in fade-in mb-[10vh] flex w-full max-w-2xl flex-col gap-8 px-4 duration-500 xl:mx-auto xl:px-0">
+      {isInstallable && (
+        <Item variant="outline" className={'border-dashed'}>
+          <ItemMedia
+            variant="image"
+            className={'bg-muted flex items-center justify-center rounded-full p-1'}
+          >
+            <Smartphone className="size-5" />
+          </ItemMedia>
+          <ItemContent>
+            <div className="flex flex-col">
+              <p className="text-base font-bold">Instalar la app</p>
+            </div>
+          </ItemContent>
+          <ItemActions>
+            <Button size="icon" onClick={handleInstallClick} className="gap-2 shadow-sm">
+              <Download className="size-4" />
+            </Button>
+          </ItemActions>
+        </Item>
+      )}
       <header className="flex items-center justify-between py-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight">Hola, {firstName} 👋</h1>
