@@ -1,6 +1,3 @@
-import JsonLd from '@/components/seo/JsonLd'
-import CookieBanner from '@/components/ui/CookieBanner'
-import { generateOrganizationJsonLd, generateWebsiteJsonLd } from '@/lib/seo/schema'
 import { Geist, Geist_Mono } from 'next/font/google'
 
 import MenuBar from '@/components/layout/MenuBar/MenuBar'
@@ -74,8 +71,6 @@ export default async function RootLayout({ children }) {
           {/* <Header /> */}
           <MenuBar />
           {children}
-          <CookieBanner />
-          <JsonLd data={[generateOrganizationJsonLd(), generateWebsiteJsonLd()]} />
         </Providers>
       </body>
     </html>
