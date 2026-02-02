@@ -2,7 +2,7 @@
 
 import AuthButton from '@/components/next-auth/AuthButton/AuthButton'
 import { Button } from '@/components/ui/button'
-import { HomeIcon } from 'lucide-react'
+import { HomeIcon, Users } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -18,9 +18,7 @@ const MenuBar = () => {
           variant="ghost"
           aria-label="Accueil"
           className={
-            pathname === '/'
-              ? 'text-primary bg-background/20 rounded-md border-none transition'
-              : ''
+            pathname === '/' ? 'bg-primary text-primary-foreground rounded-full transition' : ''
           }
         >
           <Link href="/">
@@ -28,22 +26,22 @@ const MenuBar = () => {
           </Link>
         </Button>
 
-        {/* <Button
+        <Button
           asChild
           size="icon"
           variant="ghost"
           aria-label="push"
           disabled
           className={
-            pathname === '/test-push'
-              ? 'bg-primary text-primary-foreground rounded-md transition'
+            pathname === '/students'
+              ? 'bg-primary text-primary-foreground rounded-full transition'
               : ''
           }
         >
-          <Link href="/test-push">
-            <BellDot size={20} />
+          <Link href="/students">
+            <Users size={20} />
           </Link>
-        </Button> */}
+        </Button>
         <AuthButton />
       </div>
     </div>
