@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 const StudentSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // El modelo de tu auth
+    ref: 'User',
     required: true,
   },
   name: {
@@ -11,14 +11,8 @@ const StudentSchema = new mongoose.Schema({
     required: [true, 'El nombre es obligatorio'],
     trim: true,
   },
-  // Nueva propiedad para el costo de la clase
-  price: {
-    type: Number,
-    required: [true, 'La tarifa es obligatoria'],
-    min: [0, 'La tarifa no puede ser negativa'],
-    default: 0,
-  },
-  // Tabla de notas/comentarios
+  // Le champ price a été supprimé d'ici car il est maintenant géré par créneau (Schedule)
+
   notes: [
     {
       content: String,
@@ -28,7 +22,6 @@ const StudentSchema = new mongoose.Schema({
       },
     },
   ],
-  // Estado del alumno (por si deja de venir)
   active: {
     type: Boolean,
     default: true,
@@ -38,8 +31,5 @@ const StudentSchema = new mongoose.Schema({
     default: Date.now,
   },
 })
-
-// Tip: Si planeas buscar mucho por nombre, podrías añadir un índice
-// StudentSchema.index({ name: 1 });
 
 export default mongoose.models.Student || mongoose.model('Student', StudentSchema)

@@ -4,7 +4,7 @@ import mongoose from 'mongoose'
 const ScheduleSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // El modelo de tu auth
+    ref: 'User',
     required: true,
   },
   studentId: {
@@ -17,14 +17,20 @@ const ScheduleSchema = new mongoose.Schema({
     enum: ['weekly', 'once'],
     default: 'weekly',
   },
-  // Solo se usa si occurrence es 'once'
+  // --- NOUVEAU CHAMP ---
+  
+  price: {
+    type: Number,
+    required: true,
+    default: 50, // Sécurité : si rien n'est passé, on garde ta base de 50
+  },
+  // ---------------------
   date: {
     type: Date,
     required: function () {
       return this.occurrence === 'once'
     },
   },
-  // Solo se usa si occurrence es 'weekly'
   dayOfWeek: {
     type: Number,
     min: 0,

@@ -1,30 +1,49 @@
 'use client'
 
+import { AddStudentDialog } from '@/components/sections/Home/HomeDashboard/AddStudentDialog'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ChevronRight, Loader2, Search, User } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
 
 export default function StudentsPage() {
+  const { data: session, status: authStatus } = useSession()
+  const router = useRouter()
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    fetch('/api/students')
-      .then((res) => res.json())
-      .then((data) => {
-        setStudents(data)
-        setLoading(false)
-      })
+  // 1. Fonction de récupération isolée pour pouvoir être rappelée
+  const fetchStudents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/students')
+      const data = await res.json()
+      setStudents(data)
+    } catch (error) {
+      console.error('Erreur lors du chargement des élèves:', error)
+    } finally {
+      setLoading(false)
+    }
   }, [])
+
+  useEffect(() => {
+    if (authStatus === 'unauthenticated') {
+      router.push('/connexion')
+    }
+
+    if (authStatus === 'authenticated') {
+      fetchStudents()
+    }
+  }, [authStatus, router, fetchStudents])
 
   const filteredStudents = students.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase())
   )
 
-  if (loading)
+  if (authStatus === 'loading' || loading)
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <Loader2 className="animate-spin" />
@@ -32,9 +51,12 @@ export default function StudentsPage() {
     )
 
   return (
-    <div className="mx-auto mt-10 max-w-2xl space-y-6 px-4 lg:mt-24">
+    <div className="mx-auto mt-10 mb-[10vh] max-w-2xl space-y-6 px-4 lg:mt-24">
       <header className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold">Mis Alumnos</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Mis Alumnos</h1>
+        </div>
+
         <div className="relative">
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
@@ -47,24 +69,32 @@ export default function StudentsPage() {
       </header>
 
       <div className="grid gap-3">
-        {filteredStudents.map((student) => (
-          <Link key={student._id} href={`/students/${student._id}`}>
-            <Card className="hover:bg-muted/50 cursor-pointer transition-colors">
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-primary/10 text-primary rounded-full p-2">
-                    <User className="size-5" />
+        {filteredStudents.length > 0 ? (
+          filteredStudents.map((student) => (
+            <Link key={student._id} href={`/students/${student._id}?name=${student.name}`}>
+              <Card className="hover:bg-muted/50 cursor-pointer transition-colors">
+                <CardContent className="flex items-center justify-between px-4 py-0">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-primary/10 text-primary rounded-full p-2">
+                      <User className="size-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">{student.name}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-bold">{student.name}</p>
-                    <p className="text-muted-foreground text-xs">{student.price} MXN / sesión</p>
-                  </div>
-                </div>
-                <ChevronRight className="text-muted-foreground size-4" />
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+                  <ChevronRight className="text-muted-foreground size-4" />
+                </CardContent>
+              </Card>
+            </Link>
+          ))
+        ) : (
+          <p className="text-muted-foreground py-10 text-center">No se encontraron alumnos.</p>
+        )}
+      </div>
+
+      {/* Bouton d'ajout en bas pour l'accessibilité mobile */}
+      <div className="flex justify-center">
+        <AddStudentDialog onSuccess={fetchStudents} />
       </div>
     </div>
   )

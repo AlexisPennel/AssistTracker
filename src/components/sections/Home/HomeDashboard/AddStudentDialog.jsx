@@ -14,7 +14,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useSchedules } from '@/context/ScheduleContext'
-import { ArrowRight, CalendarDays, Loader2, Plus, Repeat, Trash2 } from 'lucide-react'
+import {
+  ArrowRight,
+  CalendarDays,
+  DollarSign,
+  Loader2,
+  Plus,
+  Repeat,
+  Trash2,
+  UserPlus2,
+} from 'lucide-react'
 import { useState, useTransition } from 'react'
 
 const DAYS = [
@@ -27,33 +36,25 @@ const DAYS = [
   { label: 'Sam', value: 6 },
 ]
 
-export function AddStudentDialog() {
+export function AddStudentDialog({ onSuccess }) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const { refreshSchedules } = useSchedules()
 
-  // État initial avec le champ 'occurrence' et 'date'
-  const [schedules, setSchedules] = useState([
-    {
-      occurrence: 'weekly',
-      dayOfWeek: 1,
-      date: '',
-      startTime: '09:00',
-      endTime: '10:00',
-    },
-  ])
+  // 1. On inclut 'price' dans l'objet de chaque créneau
+  const initialSchedule = {
+    occurrence: 'weekly',
+    dayOfWeek: 1,
+    date: '',
+    startTime: '09:00',
+    endTime: '10:00',
+    price: '50', // Tarif par défaut par turno
+  }
+
+  const [schedules, setSchedules] = useState([initialSchedule])
 
   const addScheduleField = () => {
-    setSchedules([
-      ...schedules,
-      {
-        occurrence: 'weekly',
-        dayOfWeek: 1,
-        date: '',
-        startTime: '09:00',
-        endTime: '10:00',
-      },
-    ])
+    setSchedules([...schedules, { ...initialSchedule }])
   }
 
   const removeScheduleField = (index) => {
@@ -72,7 +73,7 @@ export function AddStudentDialog() {
 
     const studentData = {
       name: formData.get('name'),
-      price: formData.get('price'),
+      // Note : Le prix global disparaît ici au profit des prix dans 'schedules'
     }
 
     startTransition(async () => {
@@ -80,10 +81,9 @@ export function AddStudentDialog() {
       if (result.success) {
         await refreshSchedules()
         setOpen(false)
-        setSchedules([
-          { occurrence: 'weekly', dayOfWeek: 1, date: '', startTime: '09:00', endTime: '10:00' },
-        ])
+        setSchedules([initialSchedule])
         event.target.reset()
+        onSuccess()
       }
     })
   }
@@ -91,8 +91,8 @@ export function AddStudentDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className={'text-xs'}>
-          <Plus className="size-3" /> Nuevo Alumno
+        <Button className="w-full gap-2 bg-[#7e9e75] hover:bg-[#6b8a63]" size={'lg'}>
+          <UserPlus2 className="size-4" /> Nuevo Alumno
         </Button>
       </DialogTrigger>
 
@@ -108,7 +108,7 @@ export function AddStudentDialog() {
                 htmlFor="name"
                 className="text-muted-foreground text-xs font-bold tracking-widest uppercase"
               >
-                Nombre
+                Nombre del Alumno
               </Label>
               <Input
                 id="name"
@@ -118,54 +118,26 @@ export function AddStudentDialog() {
                 className="bg-muted/30"
               />
             </div>
-            <div className="grid gap-2">
-              <Label
-                htmlFor="price"
-                className="text-muted-foreground text-xs font-bold tracking-widest uppercase"
-              >
-                Tarifa (MXN)
-              </Label>
-              <Input
-                id="price"
-                name="price"
-                type="number"
-                placeholder="50"
-                required
-                className="bg-muted/30"
-              />
-            </div>
           </div>
 
           <Separator />
 
           <div className="grid gap-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
-                Planificación
-              </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addScheduleField}
-                className="h-7 border-dashed px-2 text-[10px] font-bold uppercase"
-              >
-                + Agregar turno
-              </Button>
-            </div>
+            <Label className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
+              Planificación y Tarifas
+            </Label>
 
             {schedules.map((slot, index) => (
               <div
                 key={index}
                 className="bg-muted/10 animate-in fade-in zoom-in-95 space-y-4 rounded-xl border p-4 duration-200"
               >
-                {/* Sélecteur d'occurrence : Hebdomadaire ou Une fois */}
                 <div className="flex gap-2">
                   <Button
                     type="button"
                     variant={slot.occurrence === 'weekly' ? 'default' : 'outline'}
                     size="sm"
-                    className={`h-8 w-fit flex-1 gap-2 text-[10px] font-bold uppercase ${slot.occurrence === 'weekly' ? 'bg-primary' : ''}`}
+                    className={`h-8 flex-1 gap-2 text-[10px] font-bold uppercase ${slot.occurrence === 'weekly' ? 'bg-primary' : ''}`}
                     onClick={() => updateSchedule(index, 'occurrence', 'weekly')}
                   >
                     <Repeat className="size-3" /> Semanal
@@ -193,14 +165,30 @@ export function AddStudentDialog() {
                 </div>
 
                 <div className="grid gap-3">
-                  {/* Choix du jour ou de la date précise */}
+                  {/* Ligne pour le Tarif de ce turno */}
+                  <div className="grid gap-1.5">
+                    <span className="text-muted-foreground ml-1 text-[10px] font-bold uppercase">
+                      Tarifa por este turno (MXN)
+                    </span>
+                    <div className="relative">
+                      <DollarSign className="text-muted-foreground absolute top-1/2 left-3 size-3 -translate-y-1/2" />
+                      <Input
+                        type="number"
+                        value={slot.price}
+                        onChange={(e) => updateSchedule(index, 'price', e.target.value)}
+                        className="bg-background h-9 pl-8 focus-visible:ring-[#7e9e75]"
+                        placeholder="50"
+                      />
+                    </div>
+                  </div>
+
                   {slot.occurrence === 'weekly' ? (
                     <div className="grid gap-1.5">
                       <span className="text-muted-foreground ml-1 text-[10px] font-bold uppercase">
                         Día de la semana
                       </span>
                       <select
-                        className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-[#7e9e75] focus-visible:outline-none"
+                        className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm focus-visible:ring-[#7e9e75] focus-visible:outline-none"
                         value={slot.dayOfWeek}
                         onChange={(e) => updateSchedule(index, 'dayOfWeek', e.target.value)}
                       >
@@ -221,12 +209,11 @@ export function AddStudentDialog() {
                         required={slot.occurrence === 'once'}
                         value={slot.date}
                         onChange={(e) => updateSchedule(index, 'date', e.target.value)}
-                        className="bg-background h-9 focus-visible:ring-[#7e9e75]"
+                        className="bg-background h-9"
                       />
                     </div>
                   )}
 
-                  {/* Heures début/fin */}
                   <div className="flex items-center gap-3">
                     <div className="grid flex-1 gap-1.5">
                       <span className="text-muted-foreground ml-1 text-[10px] font-bold uppercase">
@@ -236,7 +223,7 @@ export function AddStudentDialog() {
                         type="time"
                         value={slot.startTime}
                         onChange={(e) => updateSchedule(index, 'startTime', e.target.value)}
-                        className="bg-background h-9 focus-visible:ring-[#7e9e75]"
+                        className="bg-background h-9"
                       />
                     </div>
                     <ArrowRight className="text-muted-foreground mt-6 size-4 opacity-30" />
@@ -248,17 +235,31 @@ export function AddStudentDialog() {
                         type="time"
                         value={slot.endTime}
                         onChange={(e) => updateSchedule(index, 'endTime', e.target.value)}
-                        className="bg-background h-9 focus-visible:ring-[#7e9e75]"
+                        className="bg-background h-9"
                       />
                     </div>
                   </div>
                 </div>
               </div>
             ))}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addScheduleField}
+              className="h-9 border-dashed px-2 text-xs font-bold uppercase"
+            >
+              <Plus className="mr-2 size-3" /> Agregar turno
+            </Button>
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={isPending} className="w-full">
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="w-full bg-[#7e9e75] hover:bg-[#6b8a63]"
+            >
               {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar Alumno'}
             </Button>
           </DialogFooter>

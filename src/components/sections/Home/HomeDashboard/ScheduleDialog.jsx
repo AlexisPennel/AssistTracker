@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { DollarSign, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 const DAYS_SHORT = [
@@ -31,15 +32,17 @@ const DAYS_SHORT = [
 
 export function ScheduleDialog({ isOpen, setIsOpen, studentId, schedule, onSuccess }) {
   const [loading, setLoading] = useState(false)
+
+  // 1. Ajout de 'price' dans l'état initial
   const [formData, setFormData] = useState({
     occurrence: 'weekly',
     dayOfWeek: '1',
     startTime: '08:00',
     endTime: '09:00',
     date: '',
+    price: '50',
   })
 
-  // Sincronizar el formulario cuando se abre el diálogo o cambia el horario a editar
   useEffect(() => {
     if (schedule && isOpen) {
       setFormData({
@@ -48,15 +51,16 @@ export function ScheduleDialog({ isOpen, setIsOpen, studentId, schedule, onSucce
         startTime: schedule.startTime || '08:00',
         endTime: schedule.endTime || '09:00',
         date: schedule.date ? new Date(schedule.date).toISOString().split('T')[0] : '',
+        price: schedule.price?.toString() || '50', // 2. Récupération du prix existant
       })
     } else if (isOpen) {
-      // Valores por defecto para nuevo horario
       setFormData({
         occurrence: 'weekly',
         dayOfWeek: '1',
         startTime: '08:00',
         endTime: '09:00',
         date: '',
+        price: '50',
       })
     }
   }, [schedule, isOpen])
@@ -69,14 +73,14 @@ export function ScheduleDialog({ isOpen, setIsOpen, studentId, schedule, onSucce
     const url = '/api/schedules'
     const method = isEditing ? 'PUT' : 'POST'
 
-    // Formateo de datos antes de enviar a la API
+    // 3. Inclusion du prix converti en nombre dans le payload
     const payload = {
       ...formData,
       studentId,
-      dayOfWeek: parseInt(formData.dayOfWeek), // Mongoose espera un Number
-      // Si es "once", enviamos la fecha; si es "weekly", la limpiamos
+      dayOfWeek: parseInt(formData.dayOfWeek),
+      price: Number(formData.price),
       date: formData.occurrence === 'once' ? formData.date : null,
-      id: schedule?._id, // Necesario para el PUT
+      id: schedule?._id,
     }
 
     try {
@@ -87,7 +91,7 @@ export function ScheduleDialog({ isOpen, setIsOpen, studentId, schedule, onSucce
       })
 
       if (res.ok) {
-        onSuccess() // Recarga la lista en la página principal
+        onSuccess()
         setIsOpen(false)
       } else {
         const errData = await res.json()
@@ -111,8 +115,24 @@ export function ScheduleDialog({ isOpen, setIsOpen, studentId, schedule, onSucce
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+          {/* --- CHAMP TARIF (Nouveau) --- */}
+          <div className="space-y-2">
+            <Label htmlFor="price">Tarifa por sesión (MXN)</Label>
+            <div className="relative">
+              <DollarSign className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+              <Input
+                id="price"
+                type="number"
+                required
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                className="bg-muted/20 pl-9"
+                placeholder="50"
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
-            {/* TIPO DE OCURRENCIA */}
             <div className="space-y-2">
               <Label htmlFor="occurrence">Frecuencia</Label>
               <Select
@@ -129,7 +149,6 @@ export function ScheduleDialog({ isOpen, setIsOpen, studentId, schedule, onSucce
               </Select>
             </div>
 
-            {/* DÍA O FECHA SEGÚN OCURRENCIA */}
             {formData.occurrence === 'weekly' ? (
               <div className="space-y-2">
                 <Label htmlFor="dayOfWeek">Día de la semana</Label>
@@ -164,7 +183,6 @@ export function ScheduleDialog({ isOpen, setIsOpen, studentId, schedule, onSucce
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* HORA DE INICIO */}
             <div className="space-y-2">
               <Label htmlFor="startTime">Hora Inicio</Label>
               <Input
@@ -176,7 +194,6 @@ export function ScheduleDialog({ isOpen, setIsOpen, studentId, schedule, onSucce
               />
             </div>
 
-            {/* HORA DE FIN */}
             <div className="space-y-2">
               <Label htmlFor="endTime">Hora Fin</Label>
               <Input
@@ -189,17 +206,31 @@ export function ScheduleDialog({ isOpen, setIsOpen, studentId, schedule, onSucce
             </div>
           </div>
 
-          <DialogFooter className="pt-4">
+          <DialogFooter className="gap-2 pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsOpen(false)}
               disabled={loading}
+              className="flex-1"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading} className="min-w-[100px]">
-              {loading ? 'Guardando...' : schedule ? 'Actualizar' : 'Guardar'}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-[#7e9e75] hover:bg-[#6b8a63]"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando
+                </>
+              ) : schedule ? (
+                'Actualizar'
+              ) : (
+                'Guardar'
+              )}
             </Button>
           </DialogFooter>
         </form>
