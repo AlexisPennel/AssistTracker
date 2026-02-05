@@ -132,9 +132,9 @@ const HomeDashboard = () => {
 
   return (
     <section className="animate-in fade-in mb-[10vh] flex w-full max-w-2xl flex-col gap-6 px-2 duration-500 xl:mx-auto xl:px-0">
-      <div className="flex items-center justify-between gap-2 px-3 pt-2">
+      <div className="flex items-center justify-between gap-2 px-2 pt-2">
         <div className="">
-          <p className="text-lg font-medium">Hola {session.user.firstName} 👋</p>
+          <p className="text-lg font-semibold">Hola {session.user.firstName} 👋</p>
         </div>
         <AuthButton />
       </div>

@@ -89,7 +89,7 @@ export async function GET() {
       }))
       .sort((a, b) => monthNames.indexOf(a.month) - monthNames.indexOf(b.month))
 
-    const dayDistribution = [2, 3, 4, 5, 6, 7].map((mongoDay, index) => {
+    const dayDistribution = [2, 3, 4, 5, 6, 7, 1].map((mongoDay, index) => {
       const revenue = dayMap[mongoDay] || 0
       const percentage = totalRevenue > 0 ? Math.round((revenue / totalRevenue) * 100) : 0
       return { day: index + 1, percentage }

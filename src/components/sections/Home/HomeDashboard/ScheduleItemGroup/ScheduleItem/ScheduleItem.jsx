@@ -92,7 +92,7 @@ const StatusButton = ({ icon, label, active, activeClass, onClick }) => (
   <Button
     variant="outline"
     size="icon"
-    className={`h-7 w-7 rounded-full bg-transparent ${active ? activeClass : 'text-muted-foreground/80'}`}
+    className={`h-7.5 w-7.5 rounded-full bg-transparent ${active ? activeClass : 'text-muted-foreground/80'}`}
     onClick={onClick}
   >
     {icon}

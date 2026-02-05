@@ -56,7 +56,7 @@ const ScheduleItemGroup = ({ time, slots, index, onOpenNotes, onUpdateStatus, fo
     <div className="flex items-stretch gap-4">
       {/* Columna de Izquierda: Tiempo */}
       <div className="flex min-w-[48px] flex-col items-center pt-1">
-        <span className="text-sm leading-none font-medium tracking-tight uppercase">{time}</span>
+        <span className="text-sm leading-none font-semibold tracking-tight uppercase">{time}</span>
         <span className="text-muted-foreground/50 mt-1 text-sm font-medium">
           {slots[0].endTime}
         </span>

@@ -51,7 +51,7 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true)
 
   const colors = ['bg-[#EAEBDD]', 'bg-[#DEECDB]', 'bg-[#E8E2FE]', 'bg-[#C9E5E8]']
-  const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
   useEffect(() => {
     async function fetchStats() {
@@ -89,7 +89,7 @@ export default function StatsPage() {
           <Card className="rounded-2xl border-none bg-[#EAEBDD] px-4 py-3 shadow-none">
             <CardContent className="flex flex-col gap-2 p-0">
               <span className="text-sm font-medium opacity-60">Ingresos Totales</span>
-              <p className="text-xl leading-none font-semibold">{stats?.totalRevenue || 0}$</p>
+              <p className="text-xl leading-none font-semibold">{stats?.totalRevenue || 0}€</p>
             </CardContent>
           </Card>
 
@@ -108,7 +108,7 @@ export default function StatsPage() {
           <Card className="rounded-2xl border-none bg-[#EAEBDD] px-4 py-3 shadow-none">
             <CardContent className="flex flex-col gap-2 p-0">
               <span className="text-sm font-medium opacity-60">Promedio / Día</span>
-              <p className="text-xl leading-none font-semibold">{stats?.dailyAverage || 0}$</p>
+              <p className="text-xl leading-none font-semibold">{stats?.dailyAverage || 0}€</p>
             </CardContent>
           </Card>
 
