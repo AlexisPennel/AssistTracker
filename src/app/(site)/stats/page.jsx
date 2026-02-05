@@ -21,7 +21,7 @@ const CircularProgress = ({ percentage, size = 45, strokeWidth = 5 }) => {
     >
       <svg className="rotate-[-90deg]" width={size} height={size}>
         <circle
-          className="text-[#f1f5f0]"
+          className="text-white"
           stroke="currentColor"
           strokeWidth={strokeWidth}
           fill="transparent"
@@ -89,7 +89,7 @@ export default function StatsPage() {
           <Card className="rounded-2xl border-none bg-[#EAEBDD] px-4 py-3 shadow-none">
             <CardContent className="flex flex-col gap-2 p-0">
               <span className="text-sm font-medium opacity-60">Ingresos Totales</span>
-              <p className="text-xl leading-none font-semibold">{stats?.totalRevenue || 0}€</p>
+              <p className="text-xl leading-none font-semibold">{stats?.totalRevenue || 0}$</p>
             </CardContent>
           </Card>
 
@@ -108,7 +108,7 @@ export default function StatsPage() {
           <Card className="rounded-2xl border-none bg-[#EAEBDD] px-4 py-3 shadow-none">
             <CardContent className="flex flex-col gap-2 p-0">
               <span className="text-sm font-medium opacity-60">Promedio / Día</span>
-              <p className="text-xl leading-none font-semibold">{stats?.dailyAverage || 0}€</p>
+              <p className="text-xl leading-none font-semibold">{stats?.dailyAverage || 0}$</p>
             </CardContent>
           </Card>
 
