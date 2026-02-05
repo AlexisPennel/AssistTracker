@@ -32,7 +32,7 @@ export default function AuthButton() {
               <AvatarImage
                 image={session.user.image}
                 alt={`photo de profil de ${session.user.name}`}
-                size="size-6.5 lg:size-9"
+                size="size-9 lg:size-9"
                 initials={initials}
               />
             </button>

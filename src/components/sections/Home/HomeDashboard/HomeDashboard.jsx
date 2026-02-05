@@ -1,39 +1,28 @@
 'use client'
 
-import { addDays, format, isSameDay, subDays } from 'date-fns'
-import { es } from 'date-fns/locale'
-import {
-  Ban,
-  Calendar as CalendarIcon,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Loader2,
-  MessageSquare,
-  PlusCircle,
-  Send,
-  Smartphone,
-  X,
-} from 'lucide-react'
+import { isSameDay } from 'date-fns'
+import { Loader2, MessageSquare, Send } from 'lucide-react'
 import { signIn, useSession } from 'next-auth/react'
-import { useMemo, useState } from 'react'
-
-import { addStudentNote } from '@/app/actions/student-actions' // Ton action existante
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Item, ItemActions, ItemContent, ItemMedia } from '@/components/ui/item'
-import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea' // Assure-toi d'avoir ce composant
-import { useAttendance } from '@/context/AttendanceContext'
-import { useSchedules } from '@/context/ScheduleContext'
-import { usePWAInstall } from '@/hooks/usePWAInstall'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { useMemo, useState } from 'react' // Ajout de React pour le Fragment
+
+import { addStudentNote } from '@/app/actions/student-actions'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Separator } from '@/components/ui/separator'
+import { Textarea } from '@/components/ui/textarea'
+import { useAttendance } from '@/context/AttendanceContext'
+import { useSchedules } from '@/context/ScheduleContext'
+
+// Imports des images
 import google from '../../../../../public/icons/google.svg'
+
+import AuthButton from '@/components/next-auth/AuthButton/AuthButton'
+import DashboardHeader from './DashboardHeader'
+import DateSelector from './DateSelector'
+import EmptyScheduleItemGroup from './ScheduleItemGroup/EmptyScheduleItemGroup'
+import ScheduleItemGroup from './ScheduleItemGroup/ScheduleItemGroup'
 
 const HomeDashboard = () => {
   const router = useRouter()
@@ -46,9 +35,7 @@ const HomeDashboard = () => {
     refreshSchedules,
   } = useSchedules()
   const { attendances, updateStatus } = useAttendance()
-  const { isInstallable, handleInstallClick } = usePWAInstall()
 
-  // États pour les notes
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [isNotesOpen, setIsNotesOpen] = useState(false)
   const [newNote, setNewNote] = useState('')
@@ -66,7 +53,6 @@ const HomeDashboard = () => {
       const res = await addStudentNote(selectedStudent._id, newNote)
       if (res.success) {
         setNewNote('')
-        // Si tu as une fonction pour rafraîchir les données dans ton context :
         if (refreshSchedules) await refreshSchedules()
         setIsNotesOpen(false)
       }
@@ -118,9 +104,6 @@ const HomeDashboard = () => {
     return { total, presentCount, percentage, totalRevenue }
   }, [enrichedSchedules])
 
-  const firstName = session?.user?.name ? session.user.name.split(' ')[0] : 'Profe'
-  const isToday = isSameDay(selectedDate, new Date())
-
   if (authStatus === 'loading' || schedulesLoading) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
@@ -140,14 +123,7 @@ const HomeDashboard = () => {
           variant={'outline'}
           className={'mt-4'}
         >
-          <Image
-            unoptimized
-            src={google}
-            width={20}
-            height={20}
-            alt="Icone Google"
-            aria-hidden={true}
-          />
+          <Image unoptimized src={google} width={20} height={20} alt="Icone Google" />
           continuar con Google
         </Button>
       </div>
@@ -155,221 +131,56 @@ const HomeDashboard = () => {
   }
 
   return (
-    <section className="animate-in fade-in mb-[10vh] flex w-full max-w-2xl flex-col gap-8 px-4 duration-500 xl:mx-auto xl:px-0">
-      {isInstallable && (
-        <Item variant="outline" className="border-dashed">
-          <ItemMedia
-            variant="image"
-            className="bg-muted flex items-center justify-center rounded-full p-1"
-          >
-            <Smartphone className="size-5" />
-          </ItemMedia>
-          <ItemContent>
-            <p className="text-base font-bold">Instalar la app</p>
-          </ItemContent>
-          <ItemActions>
-            <Button size="icon" onClick={handleInstallClick}>
-              <Download className="size-4" />
-            </Button>
-          </ItemActions>
-        </Item>
-      )}
-
-      <header className="flex items-center justify-between py-2">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {isToday ? `Hola, ${firstName} 👋` : 'Historial'}
-          </h1>
-          <p className="text-muted-foreground text-sm capitalize">
-            {format(selectedDate, "eeee, d 'de' MMMM", { locale: es })}
-          </p>
+    <section className="animate-in fade-in mb-[10vh] flex w-full max-w-2xl flex-col gap-6 px-2 duration-500 xl:mx-auto xl:px-0">
+      <div className="flex items-center justify-between gap-2 px-3 pt-2">
+        <div className="">
+          <p className="text-lg font-medium">Hola {session.user.firstName} 👋</p>
         </div>
-      </header>
-
-      <div className="flex items-center justify-between rounded-full border bg-transparent px-1 py-0.5">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setSelectedDate(subDays(selectedDate, 1))}
-          className="h-8 w-8 rounded-full"
-        >
-          <ChevronLeft className="size-4" />
-        </Button>
-        <div className="flex flex-col items-center">
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="text-primary size-3 opacity-70" />
-            <span className="text-sm font-bold">
-              {isToday ? 'Hoy' : format(selectedDate, 'dd MMM yyyy', { locale: es })}
-            </span>
-          </div>
-          {!isToday && (
-            <button
-              onClick={() => setSelectedDate(new Date())}
-              className="text-primary text-[10px] font-bold hover:underline"
-            >
-              Volver a hoy
-            </button>
-          )}
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-          className="h-8 w-8 rounded-full"
-        >
-          <ChevronRight className="size-4" />
-        </Button>
+        <AuthButton />
       </div>
 
-      <Card className="bg-muted/20 overflow-hidden shadow-none">
-        <CardContent className="space-y-4 px-6 py-0">
-          <div className="flex items-start justify-between">
-            <p className="text-3xl font-medium tracking-tight">
-              {formatCurrency(stats.totalRevenue)}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-end justify-between font-mono text-[11px]">
-              <p className="font-semibold">
-                {stats.presentCount} / {stats.total}{' '}
-                <span className="text-muted-foreground">clases</span>
-              </p>
-              <p className="text-primary font-bold">Assistencia {Math.round(stats.percentage)}%</p>
-            </div>
-            <Progress value={stats.percentage} className="h-2" indicatorClassName="bg-[#7e9e75]" />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Header avec stats du jour */}
+      <DashboardHeader
+        schedules={schedules}
+        selectedDate={selectedDate}
+        stats={stats}
+        formatCurrency={formatCurrency}
+      />
 
+      {/* Sélecteur de date */}
+      <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
+
+      {/* Section Timeline */}
       <div className="flex flex-col gap-6">
-        <h2 className="text-muted-foreground px-1 text-xs font-bold tracking-widest uppercase">
-          {isToday ? 'Horario de hoy' : `Clases del ${format(selectedDate, 'dd/MM')}`}
-        </h2>
-
-        {Object.keys(groupedSchedules).length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed py-12 text-center opacity-50">
-            <p className="text-muted-foreground text-sm italic">No hay clases registradas.</p>
-          </div>
+        {Object.entries(groupedSchedules).length > 0 ? (
+          <>
+            {Object.entries(groupedSchedules).map(([time, slots], index) => (
+              <ScheduleItemGroup
+                key={time}
+                time={time}
+                slots={slots}
+                index={index}
+                onOpenNotes={handleOpenNotes}
+                onUpdateStatus={updateStatus}
+                formatCurrency={formatCurrency}
+              />
+            ))}
+          </>
         ) : (
-          Object.entries(groupedSchedules).map(([time, slots]) => (
-            <div key={time} className="flex flex-col gap-3 transition-opacity duration-300">
-              <div className="flex items-center gap-3">
-                <Badge
-                  variant="secondary"
-                  className="flex items-center gap-2 px-3 py-1 text-xs font-bold shadow-sm"
-                >
-                  {time} - {slots[0].endTime}
-                </Badge>
-                <Separator className="flex-1 opacity-40" />
-              </div>
-              <div className="flex flex-col gap-2">
-                {slots.map((slot) => (
-                  <Item key={slot._id} variant="outline" className="rounded-xl">
-                    <ItemContent>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold">{slot.studentId?.name || 'Alumno'}</p>
-
-                        {/* Bulle de notes (Pleine si notes, Vide si aucune) */}
-                        <button
-                          onClick={() => handleOpenNotes(slot.studentId)}
-                          className={`flex items-center justify-center rounded-full p-1 transition-colors ${
-                            slot.studentId?.notes?.length > 0
-                              ? 'bg-[#7e9e75]/10 text-[#5a7254] hover:bg-[#7e9e75]/20'
-                              : 'text-muted-foreground/40 hover:bg-muted hover:text-muted-foreground'
-                          }`}
-                        >
-                          {slot.studentId?.notes?.length > 0 ? (
-                            <>
-                              <MessageSquare className="size-3" />
-                              <span className="ml-1 text-[10px] font-bold">
-                                {slot.studentId.notes.length}
-                              </span>
-                            </>
-                          ) : (
-                            <PlusCircle className="size-3.5" />
-                          )}
-                        </button>
-
-                        {slot.occurrence === 'once' && (
-                          <Badge
-                            variant="outline"
-                            className="h-4 border-amber-200 text-[9px] text-amber-600 uppercase"
-                          >
-                            una vez
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-muted-foreground text-xs">
-                        {formatCurrency(slot.price || 0)}
-                      </p>
-                    </ItemContent>
-                    <ItemActions className="gap-2">
-                      <Button
-                        variant={slot.status === 'canceled' ? 'canceled' : 'outline'}
-                        size="icon"
-                        className="size-8 rounded-full"
-                        onClick={() =>
-                          updateStatus(
-                            slot._id,
-                            slot.studentId._id,
-                            slot.status === 'canceled' ? 'pending' : 'canceled'
-                          )
-                        }
-                      >
-                        <Ban className="size-4" />
-                      </Button>
-                      <Button
-                        variant={slot.status === 'absent' ? 'destructive' : 'outline'}
-                        size="icon"
-                        className="size-8 rounded-full"
-                        onClick={() =>
-                          updateStatus(
-                            slot._id,
-                            slot.studentId._id,
-                            slot.status === 'absent' ? 'pending' : 'absent'
-                          )
-                        }
-                      >
-                        <X className="size-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="size-8 rounded-full transition-colors"
-                        style={{
-                          backgroundColor: slot.status === 'present' ? '#7e9e75' : 'transparent',
-                          color: slot.status === 'present' ? 'white' : 'inherit',
-                        }}
-                        onClick={() =>
-                          updateStatus(
-                            slot._id,
-                            slot.studentId._id,
-                            slot.status === 'present' ? 'pending' : 'present'
-                          )
-                        }
-                      >
-                        <Check className="size-4" />
-                      </Button>
-                    </ItemActions>
-                  </Item>
-                ))}
-              </div>
-            </div>
-          ))
+          <EmptyScheduleItemGroup onSuccess={refreshSchedules} />
         )}
       </div>
 
-      {/* Dialog para ver/añadir las notas */}
+      {/* Dialog para notas */}
       <Dialog open={isNotesOpen} onOpenChange={setIsNotesOpen}>
         <DialogContent className="rounded-3xl sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="size-5 text-[#7e9e75]" />
+              <MessageSquare className="size-5 text-[#717B64]" />
               Notas de {selectedStudent?.name}
             </DialogTitle>
           </DialogHeader>
 
-          {/* Zone d'ajout rapide de note */}
           <div className="relative mt-2">
             <Textarea
               placeholder="¿Qué pasó hoy?..."
@@ -381,37 +192,47 @@ const HomeDashboard = () => {
               size="sm"
               onClick={handleAddNote}
               disabled={isSubmitting || !newNote.trim()}
-              className="absolute right-2 bottom-2 size-8 rounded-full bg-[#7e9e75] p-0 hover:bg-[#6b8a63]"
+              className="absolute right-2 bottom-2 flex size-8 items-center justify-center rounded-full bg-[#7e9e75] p-0 hover:bg-[#6b8a63]"
             >
               {isSubmitting ? (
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-3 animate-spin" />
               ) : (
-                <Send className="size-4 text-white" />
+                <Send className="size-3 text-white" />
               )}
             </Button>
           </div>
 
           <Separator className="my-2 opacity-50" />
 
-          {/* Liste des notes existantes */}
           <div className="max-h-[40vh] space-y-4 overflow-y-auto pr-2">
             {selectedStudent?.notes?.length > 0 ? (
-              selectedStudent.notes
-                .slice()
-                .reverse()
-                .map((note, idx) => (
-                  <div key={idx} className="border-l-2 border-[#7e9e75] py-1 pl-4">
-                    <p className="text-sm leading-relaxed">{note.content}</p>
-                    <p className="text-muted-foreground mt-1 font-mono text-[10px]">
-                      {new Date(note.createdAt).toLocaleDateString('es-ES', {
-                        day: '2-digit',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  </div>
-                ))
+              <div className="space-y-4">
+                {/* On inverse d'abord pour avoir les plus récentes, puis on prend les 2 premières */}
+                {selectedStudent.notes
+                  .slice()
+                  .reverse()
+                  .slice(0, 2)
+                  .map((note, idx) => (
+                    <div key={idx} className="bg-muted/50 rounded-sm py-1 pl-4">
+                      <p className="text-sm leading-relaxed">{note.content}</p>
+                      <p className="text-muted-foreground mt-1 font-mono text-[10px]">
+                        {new Date(note.createdAt).toLocaleString('es-ES', {
+                          day: '2-digit',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  ))}
+
+                {/* Affichage du compteur si plus de 2 notes */}
+                {selectedStudent.notes.length > 2 && (
+                  <p className="pl-4 text-xs font-bold text-[#717B64]">
+                    + {selectedStudent.notes.length - 2} notas más
+                  </p>
+                )}
+              </div>
             ) : (
               <p className="text-muted-foreground py-4 text-center text-sm italic">
                 No hay notas previas.

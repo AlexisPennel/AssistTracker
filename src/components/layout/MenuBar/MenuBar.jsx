@@ -1,8 +1,6 @@
 'use client'
 
-import AuthButton from '@/components/next-auth/AuthButton/AuthButton'
-import { Button } from '@/components/ui/button'
-import { HomeIcon, Users } from 'lucide-react'
+import { ChartColumn, HomeIcon, Users } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -11,38 +9,31 @@ const MenuBar = () => {
 
   return (
     <div className="fixed bottom-0 left-0 z-50 w-screen bg-transparent lg:hidden">
-      <div className="bg-accent mx-auto flex h-fit w-screen items-center justify-center gap-4 px-4 py-3">
-        <Button
-          asChild
-          size="icon"
-          variant="ghost"
-          aria-label="Accueil"
-          className={
-            pathname === '/' ? 'bg-primary text-primary-foreground rounded-full transition' : ''
-          }
-        >
-          <Link href="/">
-            <HomeIcon size={20} />
-          </Link>
-        </Button>
+      <div className="bg-background mx-auto flex h-fit w-screen items-center justify-center gap-8 border-t px-4 py-4">
+        <Link href="/">
+          <HomeIcon
+            size={20}
+            className={pathname === '/' ? 'text-[#717B64] transition' : 'text-muted-foreground/40'}
+          />
+        </Link>
 
-        <Button
-          asChild
-          size="icon"
-          variant="ghost"
-          aria-label="push"
-          disabled
-          className={
-            pathname === '/students'
-              ? 'bg-primary text-primary-foreground rounded-full transition'
-              : ''
-          }
-        >
-          <Link href="/students">
-            <Users size={20} />
-          </Link>
-        </Button>
-        <AuthButton />
+        <Link href="/students">
+          <Users
+            size={20}
+            className={
+              pathname === '/students' ? 'text-[#717B64] transition' : 'text-muted-foreground/40'
+            }
+          />
+        </Link>
+
+        <Link href="/stats">
+          <ChartColumn
+            size={20}
+            className={
+              pathname === '/stats' ? 'text-[#717B64] transition' : 'text-muted-foreground/40'
+            }
+          />
+        </Link>
       </div>
     </div>
   )

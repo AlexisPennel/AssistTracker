@@ -14,8 +14,8 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  ArrowLeft,
   CalendarDays,
+  ChevronLeft,
   ClockPlus,
   DollarSign,
   Edit,
@@ -23,8 +23,8 @@ import {
   Loader2,
   MessageSquare,
   Send,
+  Trash,
   Trash2,
-  User,
 } from 'lucide-react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
@@ -107,27 +107,48 @@ export default function StudentDetail() {
     setIsDialogOpen(true)
   }
 
+  // SUPRESSION STUDENT
+  const handleDeleteStudent = async () => {
+    if (
+      !confirm(
+        '¿Estás seguro de que deseas eliminar este alumno? Esta acción no se puede deshacer.'
+      )
+    ) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/students/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (res.ok) {
+        // Une fois supprimé, on redirige vers la liste des élèves
+        router.push('/students')
+      } else {
+        const errorData = await res.json()
+        alert(`Error: ${errorData.error}`)
+      }
+    } catch (error) {
+      console.error('Error al eliminar el alumno:', error)
+      alert('Ocurrió un error al intentar eliminar le alumno.')
+    }
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-8 px-4 py-10 pb-24 lg:py-20">
       {/* Navigation Header */}
       <div className="flex flex-col gap-4">
-        <Button
-          variant="ghost"
-          onClick={() => router.push('/students')}
-          className="text-muted-foreground hover:text-foreground -ml-3 w-fit gap-2 hover:bg-transparent"
-        >
-          <ArrowLeft className="size-4" /> Volver a alumnos
-        </Button>
-
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="rounded-full bg-[#7e9e75]/20 p-3">
-              <User className="size-6 text-[#5a7254]" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight capitalize">{name}</h1>
-              <p className="text-muted-foreground text-sm">Panel de gestión y seguimiento</p>
-            </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              onClick={() => router.push('/students')}
+              className="h-8 w-8 rounded-full"
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <h1 className="text-2xl font-bold tracking-tight capitalize">{name}</h1>
           </div>
         </div>
       </div>
@@ -137,7 +158,7 @@ export default function StudentDetail() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <CalendarDays className="size-5" />
+              <CalendarDays className="size-4" />
               Próximas Sesiones
             </h2>
             <Button
@@ -146,7 +167,6 @@ export default function StudentDetail() {
                 setIsDialogOpen(true)
               }}
               size="sm"
-              className="gap-2 bg-[#7e9e75] shadow-sm hover:bg-[#6b8a63]"
             >
               <ClockPlus className="size-4" /> Añadir
             </Button>
@@ -167,7 +187,7 @@ export default function StudentDetail() {
               schedules.map((slot) => (
                 <div
                   key={slot._id}
-                  className="bg-card group flex items-center justify-between rounded-2xl border p-4 transition-all hover:shadow-md"
+                  className="group bg-muted/70 flex items-center justify-between rounded-2xl p-4 transition-all"
                 >
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
@@ -202,7 +222,7 @@ export default function StudentDetail() {
                       className="text-destructive"
                       onClick={() => handleDelete(slot._id)}
                     >
-                      <Trash2 s />
+                      <Trash2 />
                     </Button>
                   </div>
                 </div>
@@ -212,10 +232,10 @@ export default function StudentDetail() {
         </section>
 
         {/* SECTION: OBSERVACIONES RECIENTES */}
-        <section className="space-y-4">
+        <section className="mt-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <MessageSquare className="size-5" />
+              <MessageSquare className="size-4" />
               Notas de Seguimiento
             </h2>
             <Dialog>
@@ -289,19 +309,15 @@ export default function StudentDetail() {
               placeholder="¿Qué aprendió hoy?..."
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
-              className="bg-card border-muted-foreground/10 min-h-[100px] resize-none rounded-2xl shadow-sm focus-visible:ring-[#7e9e75]"
+              className="border-muted-foreground/30 min-h-[100px] resize-none rounded-xl focus-visible:ring-[#7e9e75]"
             />
             <Button
               onClick={handleAddNote}
               disabled={isSubmittingNote || !newNote.trim()}
-              className="absolute right-3 bottom-3 gap-2 bg-[#7e9e75] shadow-lg hover:bg-[#6b8a63]"
+              className="absolute right-3 bottom-3"
               size="sm"
             >
-              {isSubmittingNote ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Send className="size-4" />
-              )}
+              {isSubmittingNote ? <Loader2 className="animate-spin" /> : <Send />}
               <span>Guardar</span>
             </Button>
           </div>
@@ -315,6 +331,15 @@ export default function StudentDetail() {
         schedule={editingSchedule}
         onSuccess={loadAllData}
       />
+
+      <Button
+        variant={'destructive'}
+        className="w-full gap-2" // Ajout de w-full pour un meilleur look mobile
+        onClick={handleDeleteStudent}
+      >
+        <Trash className="size-4" />
+        Borrar el alumno
+      </Button>
     </div>
   )
 }

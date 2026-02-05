@@ -34,3 +34,35 @@ export async function GET(req, { params }) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
+
+export async function DELETE(req, { params }) {
+  try {
+    await connectDB()
+    const session = await getServerSession(authOptions)
+
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const resolvedParams = await params
+    const id = resolvedParams.id
+
+    // On supprime l'élève uniquement s'il appartient à l'utilisateur
+    const deletedStudent = await Student.findOneAndDelete({
+      _id: id,
+      userId: session.user.id,
+    })
+
+    if (!deletedStudent) {
+      return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })
+    }
+
+    // Optionnel : Tu pourrais aussi vouloir supprimer les horaires (Schedules) 
+    // liés à cet élève ici si ton modèle ne le fait pas en cascade.
+
+    return NextResponse.json({ message: 'Alumno eliminado correctamente' })
+  } catch (error) {
+    console.error('❌ Error API Student DELETE:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}

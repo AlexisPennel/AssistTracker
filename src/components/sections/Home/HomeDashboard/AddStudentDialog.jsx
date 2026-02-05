@@ -91,8 +91,8 @@ export function AddStudentDialog({ onSuccess }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full gap-2 bg-[#7e9e75] hover:bg-[#6b8a63]" size={'lg'}>
-          <UserPlus2 className="size-4" /> Nuevo Alumno
+        <Button className="w-fit">
+          <UserPlus2 /> Nuevo Alumno
         </Button>
       </DialogTrigger>
 
