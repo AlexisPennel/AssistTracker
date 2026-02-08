@@ -1,11 +1,11 @@
 import { authOptions } from '@/lib/next-auth/auth'
 import { connectDB } from '@/lib/next-auth/mongodb'
 import Schedule from '@/mongo/models/Schedule'
-import Student from '@/mongo/models/Student'
+import Student from '@/mongo/models/Student' // Important pour le .populate()
 import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 
-// app/api/schedules/route.js
+// --- GET : Récupérer les horaires ---
 export async function GET(req) {
   try {
     await connectDB()
@@ -14,21 +14,11 @@ export async function GET(req) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const userId = session.user.id
     const { searchParams } = new URL(req.url)
     const dateQuery = searchParams.get('date')
 
-    let targetDate = dateQuery
-      ? new Date(
-          dateQuery.split('-').map(Number)[0],
-          dateQuery.split('-').map(Number)[1] - 1,
-          dateQuery.split('-').map(Number)[2]
-        )
-      : new Date()
+    let targetDate = dateQuery ? new Date(dateQuery) : new Date()
 
-    const targetDayOfWeek = targetDate.getDay()
-
-    // ✅ Pour les "once", récupérer toute la semaine
     const startOfWeek = new Date(targetDate)
     startOfWeek.setDate(
       targetDate.getDate() - targetDate.getDay() + (targetDate.getDay() === 0 ? -6 : 1)
@@ -39,19 +29,61 @@ export async function GET(req) {
     endOfWeek.setDate(startOfWeek.getDate() + 6)
     endOfWeek.setHours(23, 59, 59, 999)
 
-    console.log('📅 Fetching schedules for week:', startOfWeek, 'to', endOfWeek)
-
     const schedules = await Schedule.find({
-      userId: userId,
+      userId: session.user.id,
       $or: [
-        { occurrence: 'weekly' }, // ✅ Tous les weekly (on filtrera côté client)
-        { occurrence: 'once', date: { $gte: startOfWeek, $lte: endOfWeek } }, // ✅ Les "once" de la semaine
+        { occurrence: 'weekly' },
+        { occurrence: 'once', date: { $gte: startOfWeek, $lte: endOfWeek } },
       ],
     })
       .populate({ path: 'studentId', model: Student })
       .sort({ startTime: 1 })
 
     return NextResponse.json(schedules.filter((s) => s.studentId !== null))
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+// --- PUT : Modifier un horaire ---
+export async function PUT(req) {
+  try {
+    await connectDB()
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+    const data = await req.json()
+    const { id, ...updateData } = data
+
+    if (!id) return NextResponse.json({ error: 'ID requis' }, { status: 400 })
+
+    const updatedSchedule = await Schedule.findOneAndUpdate(
+      { _id: id, userId: session.user.id }, // Sécurité: vérifie que l'user possède l'item
+      updateData,
+      { new: true }
+    )
+
+    return NextResponse.json(updatedSchedule)
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+// --- DELETE : Supprimer un horaire ---
+export async function DELETE(req) {
+  try {
+    await connectDB()
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+
+    if (!id) return NextResponse.json({ error: 'ID requis' }, { status: 400 })
+
+    await Schedule.findOneAndDelete({ _id: id, userId: session.user.id })
+
+    return NextResponse.json({ message: 'Horario eliminado' })
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

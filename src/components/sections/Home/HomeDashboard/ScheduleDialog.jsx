@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useSchedules } from '@/context/ScheduleContext'
 import { DollarSign, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -32,6 +33,7 @@ const DAYS_SHORT = [
 
 export function ScheduleDialog({ isOpen, setIsOpen, studentId, schedule, onSuccess }) {
   const [loading, setLoading] = useState(false)
+  const { refreshSchedules } = useSchedules()
 
   // 1. Ajout de 'price' dans l'état initial
   const [formData, setFormData] = useState({
@@ -101,6 +103,7 @@ export function ScheduleDialog({ isOpen, setIsOpen, studentId, schedule, onSucce
       console.error('❌ Error al guardar horario:', err)
       alert('Error de conexión con el servidor')
     } finally {
+      refreshSchedules()
       setLoading(false)
     }
   }
