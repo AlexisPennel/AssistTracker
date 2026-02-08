@@ -3,7 +3,7 @@
 
 import { toggleAttendance } from '@/app/actions/attendance-actions'
 import { useSession } from 'next-auth/react'
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 
 const AttendanceContext = createContext()
 
@@ -11,6 +11,7 @@ export function AttendanceProvider({ children }) {
   const { data: session } = useSession()
   const [attendances, setAttendances] = useState({})
   const [loading, setLoading] = useState(true)
+  const hasFetched = useRef(false) // ✅ Éviter les fetches multiples
 
   const fetchAttendances = useCallback(async () => {
     try {
@@ -36,16 +37,21 @@ export function AttendanceProvider({ children }) {
     }
   }, [])
 
+  // ✅ Charger UNE SEULE FOIS au montage
   useEffect(() => {
-    if (session) {
+    if (session && !hasFetched.current) {
+      hasFetched.current = true
       fetchAttendances()
     }
-  }, [session?.user?.id, fetchAttendances])
+  }, [session]) // ✅ Pas de dépendance fetchAttendances
 
   const updateStatus = useCallback(
     async (scheduleId, studentId, newStatus, date) => {
       const dateKey = date.toISOString().split('T')[0]
       const oldStatus = attendances[dateKey]?.[scheduleId]
+
+      // ✅ Éviter les mises à jour inutiles
+      if (oldStatus === newStatus) return
 
       // Mise à jour optimiste
       setAttendances((prev) => ({
@@ -56,11 +62,9 @@ export function AttendanceProvider({ children }) {
         },
       }))
 
-      // ✅ IMPORTANT : Passer la date à toggleAttendance
       const result = await toggleAttendance(scheduleId, studentId, newStatus, dateKey)
 
       if (!result.success) {
-        // Rollback
         setAttendances((prev) => ({
           ...prev,
           [dateKey]: {

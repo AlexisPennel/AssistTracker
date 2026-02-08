@@ -40,6 +40,7 @@ const HomeDashboard = () => {
   const [isNotesOpen, setIsNotesOpen] = useState(false)
   const [newNote, setNewNote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isChangingDate, setIsChangingDate] = useState(false) // ✅ Transition douce
 
   const handleOpenNotes = (student) => {
     setSelectedStudent(student)
@@ -63,6 +64,13 @@ const HomeDashboard = () => {
     }
   }
 
+  // ✅ Wrapper pour le changement de date avec transition
+  const handleDateChange = (newDate) => {
+    setIsChangingDate(true)
+    setSelectedDate(newDate)
+    setTimeout(() => setIsChangingDate(false), 200)
+  }
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -70,16 +78,28 @@ const HomeDashboard = () => {
     }).format(amount)
   }
 
+  // HomeDashboard.jsx
   const enrichedSchedules = useMemo(() => {
     const now = new Date()
     const currentH = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
     const isViewingToday = isSameDay(selectedDate, now)
 
-    // ✅ Clé de date pour récupérer les attendances
     const dateKey = selectedDate.toISOString().split('T')[0]
     const todayAttendances = attendances[dateKey] || {}
 
-    return [...schedules]
+    const selectedDayOfWeek = selectedDate.getDay()
+
+    // ✅ Filtrer les schedules pour le jour sélectionné
+    return schedules
+      .filter((slot) => {
+        if (slot.occurrence === 'weekly') {
+          return slot.dayOfWeek === selectedDayOfWeek
+        } else if (slot.occurrence === 'once') {
+          const slotDate = new Date(slot.date)
+          return isSameDay(slotDate, selectedDate)
+        }
+        return false
+      })
       .map((slot) => ({
         ...slot,
         status: todayAttendances[slot._id] || 'pending',
@@ -108,11 +128,12 @@ const HomeDashboard = () => {
     return { total, presentCount, percentage, totalRevenue }
   }, [enrichedSchedules])
 
-  // ✅ Wrapper pour passer la date
+  // ✅ Wrapper pour passer la date sélectionnée
   const handleUpdateStatus = (scheduleId, studentId, newStatus) => {
     updateStatus(scheduleId, studentId, newStatus, selectedDate)
   }
 
+  // ✅ Loading uniquement pour l'initial load
   if (authStatus === 'loading' || schedulesLoading || attendancesLoading) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
@@ -155,9 +176,15 @@ const HomeDashboard = () => {
         formatCurrency={formatCurrency}
       />
 
-      <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
+      {/* ✅ Utiliser le wrapper pour le changement de date */}
+      <DateSelector selectedDate={selectedDate} onDateChange={handleDateChange} />
 
-      <div className="flex flex-col gap-6">
+      {/* ✅ Transition douce en opacity au lieu d'un loading complet */}
+      <div
+        className={`flex flex-col gap-6 transition-opacity duration-200 ${
+          isChangingDate ? 'opacity-50' : 'opacity-100'
+        }`}
+      >
         {Object.entries(groupedSchedules).length > 0 ? (
           <>
             {Object.entries(groupedSchedules).map(([time, slots], index) => (
@@ -177,6 +204,7 @@ const HomeDashboard = () => {
         )}
       </div>
 
+      {/* Dialog para notas */}
       <Dialog open={isNotesOpen} onOpenChange={setIsNotesOpen}>
         <DialogContent className="rounded-3xl sm:max-w-[425px]">
           <DialogHeader>

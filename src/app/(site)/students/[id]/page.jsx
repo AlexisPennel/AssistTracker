@@ -96,7 +96,7 @@ export default function StudentDetail() {
     try {
       const res = await fetch(`/api/schedules?id=${scheduleId}`, { method: 'DELETE' })
       if (res.ok) {
-        await refreshSchedules()
+        refreshSchedules()
         await loadAllData()
       }
     } catch (error) {

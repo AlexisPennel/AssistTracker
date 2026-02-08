@@ -1,63 +1,56 @@
+// context/ScheduleContext.jsx
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 
 const ScheduleContext = createContext()
 
 export function ScheduleProvider({ children }) {
-  const { status } = useSession()
+  const { data: session } = useSession()
   const [schedules, setSchedules] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  // 1. Nouvel état pour la date sélectionnée (par défaut : aujourd'hui)
+  const [loading, setLoading] = useState(true) // ✅ Pour l'initial load seulement
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const hasFetched = useRef(false)
 
-  const fetchSchedules = useCallback(
-    async (date) => {
-      if (status !== 'authenticated') return
-
-      setLoading(true)
-      try {
-        // 2. Formatage de la date en YYYY-MM-DD pour l'API
-        const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
-        // On utilise un endpoint plus générique ou on passe la date en query param
-        const response = await fetch(`/api/schedules?date=${dateStr}`)
-
-        if (!response.ok) {
-          throw new Error(`Error HTTP: ${response.status}`)
-        }
-
-        const data = await response.json()
-        setSchedules(Array.isArray(data) ? data : [])
-      } catch (error) {
-        console.error('❌ Error cargando horarios:', error)
-        setSchedules([])
-      } finally {
-        setLoading(false)
+  const fetchSchedules = useCallback(async () => {
+    try {
+      if (!hasFetched.current) {
+        setLoading(true)
       }
-    },
-    [status]
-  )
 
-  // 3. Re-charger les données dès que la date sélectionnée change
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetchSchedules(selectedDate)
-    } else if (status === 'unauthenticated') {
+      const res = await fetch('/api/schedules')
+      if (res.ok) {
+        const data = await res.json()
+        setSchedules(data)
+        hasFetched.current = true
+      }
+    } catch (error) {
+      console.error('Error fetching schedules:', error)
+    } finally {
       setLoading(false)
-      setSchedules([])
     }
-  }, [status, selectedDate, fetchSchedules])
+  }, [])
+
+  // ✅ Charger UNE SEULE FOIS au montage
+  useEffect(() => {
+    if (session && !hasFetched.current) {
+      fetchSchedules()
+    }
+  }, [session]) // Pas de dépendance selectedDate !
+
+  const refreshSchedules = async () => {
+    await fetchSchedules()
+  }
 
   return (
     <ScheduleContext.Provider
       value={{
         schedules,
-        loading: loading || status === 'loading',
-        selectedDate, // On expose la date actuelle
-        setSelectedDate, // On expose la fonction pour changer de date
-        refreshSchedules: () => fetchSchedules(selectedDate),
+        loading,
+        selectedDate,
+        setSelectedDate,
+        refreshSchedules,
       }}
     >
       {children}
@@ -68,7 +61,7 @@ export function ScheduleProvider({ children }) {
 export const useSchedules = () => {
   const context = useContext(ScheduleContext)
   if (!context) {
-    throw new Error('useSchedules debe usarse dentro de un ScheduleProvider')
+    throw new Error('useSchedules must be used within ScheduleProvider')
   }
   return context
 }

@@ -1,16 +1,17 @@
-import { cn } from '@/lib/utils' // Utilitaire classique de shadcn pour les classes
+import { cn } from '@/lib/utils'
 import { addDays, format, isSameDay, startOfWeek } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 const DateSelector = ({ selectedDate, onDateChange }) => {
-  // Générer les 7 jours de la semaine courante
-  const startDate = startOfWeek(selectedDate, { weekStartsOn: 1 }) // Commence le lundi
+  const startDate = startOfWeek(selectedDate, { weekStartsOn: 1 })
   const days = Array.from({ length: 7 }, (_, i) => addDays(startDate, i))
+  const today = new Date() // ✅ Jour actuel
 
   return (
     <div className="no-scrollbar flex w-full items-center justify-between overflow-x-auto px-2 py-1">
       {days.map((day) => {
         const isSelected = isSameDay(day, selectedDate)
+        const isToday = isSameDay(day, today) // ✅ Vérifier si c'est aujourd'hui
 
         return (
           <button
@@ -38,8 +39,14 @@ const DateSelector = ({ selectedDate, onDateChange }) => {
               {format(day, 'EEE', { locale: es }).replace('.', '')}
             </span>
 
-            {/* Le petit point blanc sous la date sélectionnée */}
-            {isSelected && <div className="mt-1 h-1 w-1 rounded-full bg-[#E5FBF3]" />}
+            {/* ✅ Points indicateurs */}
+            <div className="mt-1 flex h-1 gap-1">
+              {/* Point vert pour le jour actuel */}
+              {isToday && <div className="h-1 w-1 rounded-full bg-[#9DB37E]" />}
+
+              {/* Point blanc pour le jour sélectionné */}
+              {isSelected && !isToday && <div className="h-1 w-1 rounded-full bg-[#E5FBF3]" />}
+            </div>
           </button>
         )
       })}
