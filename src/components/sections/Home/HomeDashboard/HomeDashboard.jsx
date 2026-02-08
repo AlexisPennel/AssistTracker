@@ -5,7 +5,7 @@ import { Loader2, MessageSquare, Send } from 'lucide-react'
 import { signIn, useSession } from 'next-auth/react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { useMemo, useState } from 'react' // Ajout de React pour le Fragment
+import { useMemo, useState } from 'react'
 
 import { addStudentNote } from '@/app/actions/student-actions'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { useAttendance } from '@/context/AttendanceContext'
 import { useSchedules } from '@/context/ScheduleContext'
 
-// Imports des images
 import google from '../../../../../public/icons/google.svg'
 
 import AuthButton from '@/components/next-auth/AuthButton/AuthButton'
@@ -34,7 +33,8 @@ const HomeDashboard = () => {
     setSelectedDate,
     refreshSchedules,
   } = useSchedules()
-  const { attendances, updateStatus } = useAttendance()
+
+  const { attendances, updateStatus, loading: attendancesLoading } = useAttendance()
 
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [isNotesOpen, setIsNotesOpen] = useState(false)
@@ -75,10 +75,14 @@ const HomeDashboard = () => {
     const currentH = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
     const isViewingToday = isSameDay(selectedDate, now)
 
+    // ✅ Clé de date pour récupérer les attendances
+    const dateKey = selectedDate.toISOString().split('T')[0]
+    const todayAttendances = attendances[dateKey] || {}
+
     return [...schedules]
       .map((slot) => ({
         ...slot,
-        status: attendances[slot._id] || 'pending',
+        status: todayAttendances[slot._id] || 'pending',
         isPast: isViewingToday ? slot.endTime < currentH : selectedDate < now,
       }))
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
@@ -104,7 +108,12 @@ const HomeDashboard = () => {
     return { total, presentCount, percentage, totalRevenue }
   }, [enrichedSchedules])
 
-  if (authStatus === 'loading' || schedulesLoading) {
+  // ✅ Wrapper pour passer la date
+  const handleUpdateStatus = (scheduleId, studentId, newStatus) => {
+    updateStatus(scheduleId, studentId, newStatus, selectedDate)
+  }
+
+  if (authStatus === 'loading' || schedulesLoading || attendancesLoading) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
         <Loader2 className="text-primary size-8 animate-spin" />
@@ -133,13 +142,12 @@ const HomeDashboard = () => {
   return (
     <section className="animate-in fade-in mb-[10vh] flex w-full max-w-2xl flex-col gap-6 px-2 duration-500 xl:mx-auto xl:px-0">
       <div className="flex items-center justify-between gap-2 px-2 pt-2">
-        <div className="">
+        <div>
           <p className="text-lg font-semibold">Hola {session.user.firstName} 👋</p>
         </div>
         <AuthButton />
       </div>
 
-      {/* Header avec stats du jour */}
       <DashboardHeader
         schedules={schedules}
         selectedDate={selectedDate}
@@ -147,10 +155,8 @@ const HomeDashboard = () => {
         formatCurrency={formatCurrency}
       />
 
-      {/* Sélecteur de date */}
       <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
 
-      {/* Section Timeline */}
       <div className="flex flex-col gap-6">
         {Object.entries(groupedSchedules).length > 0 ? (
           <>
@@ -161,7 +167,7 @@ const HomeDashboard = () => {
                 slots={slots}
                 index={index}
                 onOpenNotes={handleOpenNotes}
-                onUpdateStatus={updateStatus}
+                onUpdateStatus={handleUpdateStatus}
                 formatCurrency={formatCurrency}
               />
             ))}
@@ -171,7 +177,6 @@ const HomeDashboard = () => {
         )}
       </div>
 
-      {/* Dialog para notas */}
       <Dialog open={isNotesOpen} onOpenChange={setIsNotesOpen}>
         <DialogContent className="rounded-3xl sm:max-w-[425px]">
           <DialogHeader>
@@ -207,7 +212,6 @@ const HomeDashboard = () => {
           <div className="max-h-[40vh] space-y-4 overflow-y-auto pr-2">
             {selectedStudent?.notes?.length > 0 ? (
               <div className="space-y-4">
-                {/* On inverse d'abord pour avoir les plus récentes, puis on prend les 2 premières */}
                 {selectedStudent.notes
                   .slice()
                   .reverse()
@@ -226,7 +230,6 @@ const HomeDashboard = () => {
                     </div>
                   ))}
 
-                {/* Affichage du compteur si plus de 2 notes */}
                 {selectedStudent.notes.length > 2 && (
                   <p className="pl-4 text-xs font-bold text-[#717B64]">
                     + {selectedStudent.notes.length - 2} notas más

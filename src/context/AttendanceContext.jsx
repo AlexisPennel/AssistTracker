@@ -1,3 +1,4 @@
+// context/AttendanceContext.jsx
 'use client'
 
 import { toggleAttendance } from '@/app/actions/attendance-actions'
@@ -8,47 +9,70 @@ const AttendanceContext = createContext()
 
 export function AttendanceProvider({ children }) {
   const { data: session } = useSession()
-  const [attendances, setAttendances] = useState({}) // Format: { scheduleId: status }
+  const [attendances, setAttendances] = useState({})
   const [loading, setLoading] = useState(true)
 
   const fetchAttendances = useCallback(async () => {
-    if (!session) return
     try {
       setLoading(true)
       const res = await fetch('/api/attendances/today')
+
       if (res.ok) {
         const data = await res.json()
-        // On transforme le tableau en objet pour un accès rapide : { id: 'present' }
-        const attendanceMap = data.reduce((acc, curr) => {
-          acc[curr.scheduleId] = curr.status
+
+        const attendancesByDate = data.reduce((acc, curr) => {
+          const dateKey = new Date(curr.date).toISOString().split('T')[0]
+          if (!acc[dateKey]) acc[dateKey] = {}
+          acc[dateKey][curr.scheduleId] = curr.status
           return acc
         }, {})
-        setAttendances(attendanceMap)
+
+        setAttendances(attendancesByDate)
       }
     } catch (err) {
-      console.error('Error fetching attendances:', err)
+      console.error('❌ Error fetching attendances:', err)
     } finally {
       setLoading(false)
     }
-  }, [session])
+  }, [])
 
   useEffect(() => {
-    fetchAttendances()
-  }, [fetchAttendances])
-
-  const updateStatus = async (scheduleId, studentId, newStatus) => {
-    // Mise à jour optimiste (UI immédiate)
-    const oldStatus = attendances[scheduleId]
-    setAttendances((prev) => ({ ...prev, [scheduleId]: newStatus }))
-
-    const result = await toggleAttendance(scheduleId, studentId, newStatus)
-
-    if (!result.success) {
-      // Revenir en arrière en cas d'erreur
-      setAttendances((prev) => ({ ...prev, [scheduleId]: oldStatus }))
-      alert('Error al guardar')
+    if (session) {
+      fetchAttendances()
     }
-  }
+  }, [session?.user?.id, fetchAttendances])
+
+  const updateStatus = useCallback(
+    async (scheduleId, studentId, newStatus, date) => {
+      const dateKey = date.toISOString().split('T')[0]
+      const oldStatus = attendances[dateKey]?.[scheduleId]
+
+      // Mise à jour optimiste
+      setAttendances((prev) => ({
+        ...prev,
+        [dateKey]: {
+          ...prev[dateKey],
+          [scheduleId]: newStatus,
+        },
+      }))
+
+      // ✅ IMPORTANT : Passer la date à toggleAttendance
+      const result = await toggleAttendance(scheduleId, studentId, newStatus, dateKey)
+
+      if (!result.success) {
+        // Rollback
+        setAttendances((prev) => ({
+          ...prev,
+          [dateKey]: {
+            ...prev[dateKey],
+            [scheduleId]: oldStatus,
+          },
+        }))
+        console.error('Error updating status')
+      }
+    },
+    [attendances]
+  )
 
   return (
     <AttendanceContext.Provider
@@ -59,4 +83,10 @@ export function AttendanceProvider({ children }) {
   )
 }
 
-export const useAttendance = () => useContext(AttendanceContext)
+export const useAttendance = () => {
+  const context = useContext(AttendanceContext)
+  if (!context) {
+    throw new Error('useAttendance must be used within AttendanceProvider')
+  }
+  return context
+}

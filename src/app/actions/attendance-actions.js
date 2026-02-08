@@ -1,48 +1,53 @@
+// app/actions/attendance-actions.js
 'use server'
 
 import { authOptions } from '@/lib/next-auth/auth'
 import { connectDB } from '@/lib/next-auth/mongodb'
 import Attendance from '@/mongo/models/Attendance'
-import { getServerSession } from 'next-auth/next'
-import { revalidatePath } from 'next/cache'
+import { getServerSession } from 'next-auth'
 
-export async function toggleAttendance(scheduleId, studentId, status) {
+export async function toggleAttendance(scheduleId, studentId, newStatus, dateString) {
   try {
+    await connectDB()
     const session = await getServerSession(authOptions)
-    if (!session || !session.user?.id) {
-      throw new Error('Non autorisé')
+
+    if (!session) {
+      return { success: false, error: 'Non authentifié' }
     }
 
-    await connectDB()
+    // ✅ Utiliser la date passée en paramètre (format: "2026-02-08")
+    const [year, month, day] = dateString.split('-').map(Number)
+    const attendanceDate = new Date(year, month - 1, day, 0, 0, 0, 0)
 
-    const userId = session.user.id
+    console.log('📅 Toggle attendance for date:', dateString, attendanceDate)
 
-    // Normalisation de la date pour le fuseau horaire du Mexique (UTC minuit)
-    const now = new Date()
-    const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+    // Chercher si une attendance existe déjà pour ce schedule à cette date
+    const existing = await Attendance.findOne({
+      scheduleId,
+      userId: session.user.id,
+      date: attendanceDate,
+    })
 
-    // Mise à jour ou Création (upsert)
-    await Attendance.findOneAndUpdate(
-      {
+    if (existing) {
+      // ✅ Mettre à jour le statut existant
+      existing.status = newStatus
+      await existing.save()
+      console.log('✅ Updated existing attendance:', existing)
+    } else {
+      // ✅ Créer une nouvelle attendance
+      const newAttendance = await Attendance.create({
         scheduleId,
-        date: today,
-        userId: userId,
-      },
-      {
-        status,
         studentId,
-        userId: userId,
-        date: today,
-      },
-      { upsert: true, new: true }
-    )
-
-    // On rafraîchit les données du client
-    revalidatePath('/')
+        userId: session.user.id,
+        date: attendanceDate,
+        status: newStatus,
+      })
+      console.log('✅ Created new attendance:', newAttendance)
+    }
 
     return { success: true }
   } catch (error) {
-    console.error('❌ Erreur Attendance:', error)
+    console.error('❌ Error in toggleAttendance:', error)
     return { success: false, error: error.message }
   }
 }
