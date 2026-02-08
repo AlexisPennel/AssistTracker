@@ -88,3 +88,28 @@ export async function DELETE(req) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
+
+// --- POST : Créer un nouvel horaire ---
+export async function POST(req) {
+  try {
+    await connectDB()
+    const session = await getServerSession(authOptions)
+
+    if (!session || !session.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const data = await req.json()
+
+    // On crée l'horaire en injectant l'ID de l'utilisateur connecté
+    const newSchedule = await Schedule.create({
+      ...data,
+      userId: session.user.id, // Important pour que l'user retrouve ses propres cours
+    })
+
+    return NextResponse.json(newSchedule, { status: 201 })
+  } catch (error) {
+    console.error('❌ Error creating schedule:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
