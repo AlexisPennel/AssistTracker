@@ -1,3 +1,4 @@
+// app/api/stats/route.js
 import { authOptions } from '@/lib/next-auth/auth'
 import { connectDB } from '@/lib/next-auth/mongodb'
 import Attendance from '@/mongo/models/Attendance'
@@ -16,7 +17,6 @@ export async function GET() {
 
     const userId = session.user.id
 
-    // 1. On récupère TOUTES les présences (présents ET absents) pour calculer les ratios par jour
     const allAttendance = await Attendance.find({
       userId,
       status: { $in: ['present', 'absent'] },
@@ -24,15 +24,17 @@ export async function GET() {
       .populate('scheduleId')
       .lean()
 
-    // Initialisation des compteurs par jour (1=Lun ... 7=Dom)
+    console.log('📊 Total attendances:', allAttendance.length)
+
+    // ✅ Initialisation avec 1=Lun, 2=Mar, ..., 7=Dom
     const statsByDay = {
-      1: { present: 0, total: 0 },
-      2: { present: 0, total: 0 },
-      3: { present: 0, total: 0 },
-      4: { present: 0, total: 0 },
-      5: { present: 0, total: 0 },
-      6: { present: 0, total: 0 },
-      7: { present: 0, total: 0 },
+      1: { present: 0, total: 0 }, // Lundi
+      2: { present: 0, total: 0 }, // Mardi
+      3: { present: 0, total: 0 }, // Mercredi
+      4: { present: 0, total: 0 }, // Jeudi
+      5: { present: 0, total: 0 }, // Vendredi
+      6: { present: 0, total: 0 }, // Samedi
+      7: { present: 0, total: 0 }, // Dimanche
     }
 
     let totalRevenue = 0
@@ -42,18 +44,29 @@ export async function GET() {
 
     allAttendance.forEach((att) => {
       const schedule = att.scheduleId
-      if (!schedule) return
+      if (!schedule) {
+        console.warn('⚠️ Attendance sans schedule:', att._id)
+        return
+      }
 
-      const dayOfWeek = schedule.dayOfWeek
+      // ✅ CONVERSION: 0-6 (Dom-Sam) → 1-7 (Lun-Dom)
+      // 0 (Dimanche) → 7
+      // 1 (Lundi) → 1
+      // 2 (Mardi) → 2
+      // ...
+      // 6 (Samedi) → 6
+      const dayOfWeekModel = schedule.dayOfWeek // 0-6
+      const dayOfWeekStats = dayOfWeekModel === 0 ? 7 : dayOfWeekModel // 1-7
+
+      console.log(`📅 Schedule dayOfWeek: ${dayOfWeekModel} → Stats day: ${dayOfWeekStats}`)
 
       // On incrémente le total pour ce jour
-      statsByDay[dayOfWeek].total += 1
+      statsByDay[dayOfWeekStats].total += 1
 
       if (att.status === 'present') {
         globalPresentCount += 1
-        statsByDay[dayOfWeek].present += 1
+        statsByDay[dayOfWeekStats].present += 1
 
-        // Calcul revenus et moyenne (uniquement pour les présents)
         const price = schedule.price || 0
         totalRevenue += price
 
@@ -64,15 +77,16 @@ export async function GET() {
       }
     })
 
-    // 2. Formatage du dayDistribution avec le pourcentage d'assiduité réel
+    console.log('📊 Stats by day:', statsByDay)
+
+    // Formatage du dayDistribution
     const dayDistribution = [1, 2, 3, 4, 5, 6, 7].map((d) => {
       const dayData = statsByDay[d]
-      // Ratio : (Présents / Total du jour) * 100
       const percentage = dayData.total > 0 ? Math.round((dayData.present / dayData.total) * 100) : 0
 
       return {
         day: d,
-        percentage, // C'est maintenant le taux de présence du jour
+        percentage,
         present: dayData.present,
         total: dayData.total,
       }

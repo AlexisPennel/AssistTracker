@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { useSchedules } from '@/context/ScheduleContext'
 import {
   CalendarDays,
   ChevronLeft,
@@ -38,6 +39,7 @@ export default function StudentDetail() {
   const name = searchParams.get('name')
   const router = useRouter()
 
+  const { refreshSchedules } = useSchedules()
   const [schedules, setSchedules] = useState([])
   const [student, setStudent] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -94,6 +96,7 @@ export default function StudentDetail() {
     try {
       const res = await fetch(`/api/schedules?id=${scheduleId}`, { method: 'DELETE' })
       if (res.ok) {
+        await refreshSchedules()
         await loadAllData()
       }
     } catch (error) {

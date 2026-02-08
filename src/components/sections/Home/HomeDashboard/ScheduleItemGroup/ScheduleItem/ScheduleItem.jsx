@@ -5,17 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Ban, Check, X } from 'lucide-react'
 
 const ScheduleItem = ({ slot, onOpenNotes, onUpdateStatus, formatCurrency, index = 0 }) => {
-  // Liste de couleurs pastel assorties à tes images
-  const pastelColors = [
-    'bg-[#F4F9E9] text-[#4A5D23]', // Vert très clair
-    'bg-[#E7F6F2] text-[#2C5F55]', // Menthe
-    'bg-[#F0EEFF] text-[#4E4376]', // Lavande
-    'bg-[#E5F7F9] text-[#1E5F74]', // Bleu ciel
-  ]
-  const colorStyle = pastelColors[index % pastelColors.length]
-
-  const hasNotes = slot.studentId?.notes?.length > 0
-
   return (
     <div
       className={`relative z-2 flex w-full flex-row justify-between transition-all active:scale-[0.98]`}
@@ -23,9 +12,9 @@ const ScheduleItem = ({ slot, onOpenNotes, onUpdateStatus, formatCurrency, index
       {/* 1. Header : Nom & Bouton Note (Action discrète) */}
       <header className="flex items-start justify-between">
         <div className="flex items-center gap-2" onClick={() => onOpenNotes(slot.studentId)}>
-          <div className="flex flex-col gap-0">
+          <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-xs leading-tight font-bold">
+              <h3 className="text-sm leading-tight font-bold">
                 {slot.studentId?.name || 'Alumno'}
               </h3>
               {slot.occurrence === 'once' && (
@@ -37,7 +26,7 @@ const ScheduleItem = ({ slot, onOpenNotes, onUpdateStatus, formatCurrency, index
                 </Badge>
               )}
             </div>
-            <p className="text-xs font-medium opacity-70">{formatCurrency(slot.price || 0)}</p>
+            <p className="text-sm font-medium opacity-60">{formatCurrency(slot.price || 0)}</p>
           </div>
         </div>
       </header>
@@ -92,7 +81,7 @@ const StatusButton = ({ icon, label, active, activeClass, onClick }) => (
   <Button
     variant="outline"
     size="icon"
-    className={`h-7.5 w-7.5 rounded-full bg-transparent ${active ? activeClass : 'text-muted-foreground/80'}`}
+    className={`border-foreground/20 h-7.5 w-7.5 rounded-full bg-transparent ${active ? activeClass : 'text-muted-foreground/80'}`}
     onClick={onClick}
   >
     {icon}
